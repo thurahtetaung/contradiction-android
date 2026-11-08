@@ -682,7 +682,9 @@
         'search',
         'primary',
       );
-      use.disabled = itemList[12 * id + 7] !== 0 || !usable();
+      // Same rule as the original (tryuse on the Use key): only facts (1) are
+      // unusable. Tools are 2, other evidence 0; both can be tried anywhere.
+      use.disabled = itemList[12 * id + 7] === 1 || !usable();
       detail.appendChild(use);
       let any = false;
       for (let character = 2; character <= 7; character++)

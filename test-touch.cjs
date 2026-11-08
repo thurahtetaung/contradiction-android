@@ -343,8 +343,58 @@ async function runModernTests(page) {
     true,
   );
   await page.getByRole('button', { name: 'Back', exact: true }).tap();
+  // Tools (usable field 2) must be usable, e.g. the screwdriver at the jetty.
+  const toolUse = await page.evaluate(() => {
+    const id = 9;
+    window.toolSnapshot = {
+      itco: [...itco],
+      order: itemList[12 * id],
+      loc: [...locNow],
+      flags: useList.filter((_, i) => i % 5 === 0),
+      moveloc,
+    };
+    if (!itco.includes(id)) {
+      itco.push(id);
+      itemList[12 * id] = itco.length;
+    }
+    locNow[0] = 'LOC jetty';
+    locNow[1] = 0;
+    window.usedScene = '';
+    moveloc = (index) => (usedScene = arrowops[index]);
+    mobileUI.invalidate();
+    return itemList[12 * id + 7];
+  });
+  assert.equal(toolUse, 2);
+  await page
+    .locator('#scene-tools')
+    .getByRole('button', { name: 'Casebook', exact: true })
+    .tap();
+  await page.locator('[data-item="9"]').tap();
+  await page.locator('.item-detail[data-item="9"]').waitFor();
+  const useButton = page.getByRole('button', {
+    name: 'Use this item here',
+    exact: true,
+  });
+  assert.equal(await useButton.isDisabled(), false);
+  await useButton.tap();
+  assert.equal(await page.evaluate(() => usedScene), 'FIND PENDANT');
+  await page.evaluate(() => {
+    const snap = toolSnapshot;
+    moveloc = snap.moveloc;
+    itco.length = 0;
+    itco.push(...snap.itco);
+    itemList[12 * 9] = snap.order;
+    locNow[0] = snap.loc[0];
+    locNow[1] = snap.loc[1];
+    snap.flags.forEach((flag, i) => (useList[5 * i] = flag));
+    baron = 0;
+    mobileUI.invalidate();
+  });
   pass(
     'Evidence uses original item art and descriptions with direct selection',
+  );
+  pass(
+    'Tool items can be used where the original allows (screwdriver at the jetty)',
   );
   await page
     .locator('#scene-tools')
