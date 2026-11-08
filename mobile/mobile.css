@@ -969,19 +969,25 @@ h3 {
 .dialog-actions .ui-button {
   min-width: 110px;
 }
+/* Quiet status line: small, translucent, no heavy card. */
 #ui-toast {
   position: absolute;
   z-index: 60;
   left: 50%;
   bottom: 24px;
   transform: translateX(-50%);
-  max-width: 70%;
-  padding: 13px 22px;
-  border-left: 2px solid var(--gold);
-  background: #151b17f5;
-  box-shadow: 0 8px 30px #0005;
-  line-height: 1.5;
-  font-size: 14px;
+  max-width: 56%;
+  padding: 6px 14px;
+  border: 1px solid #c8a36633;
+  border-radius: 999px;
+  background: #0a0f0e8c;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #eee4cee6;
+  line-height: 1.4;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  text-align: center;
   pointer-events: none;
 }
 /* Top-left, where the (hidden during film) location header sits, so the
@@ -1281,4 +1287,30 @@ h3 {
   font-size: 13px;
   color: #c8a366;
   margin-top: -6px;
+}
+
+/* Jenks’s spoken thoughts: caption-styled, italic, always shown. */
+.spoken-line {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-size: 17px;
+  font-style: italic;
+  line-height: 1.5;
+  color: #f3ead6;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+}
+.spoken-line[hidden] {
+  display: none;
+}
+.spoken-line > span {
+  background: #000a;
+  padding: 2px 8px;
+  border-radius: 3px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }

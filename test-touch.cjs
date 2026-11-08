@@ -772,6 +772,60 @@ async function runLocationMemoryTests(browser, url, errors) {
   await page.getByRole('button', { name: 'Skip prologue', exact: true }).tap();
   await settled();
   const start = await where();
+  // A clip change seeks the film (readyState briefly < 2): no loading flash.
+  const loaderDuringSeek = await page.evaluate(async () => {
+    Object.defineProperty(vplayer, 'readyState', {
+      configurable: true,
+      get: () => 1,
+    });
+    mobileUI.invalidate();
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => setTimeout(resolve, 50)),
+    );
+    const hidden = document.getElementById('ui-loading').hidden;
+    delete vplayer.readyState;
+    mobileUI.invalidate();
+    return hidden;
+  });
+  assert.equal(loaderDuringSeek, true);
+  // Jenks's spoken thoughts: caption-style, shown even with CC off, no toast.
+  const thought = await page.evaluate(async () => {
+    vplayer.textTracks[0].mode = 'hidden';
+    document.getElementById('ui-toast').hidden = true;
+    news(
+      '‘So Simon did know Kate at college, but why would he lie about that?’',
+    );
+    const line = document.getElementById('spoken-line');
+    const shown = {
+      visible: !line.hidden,
+      text: line.textContent,
+      toast: !document.getElementById('ui-toast').hidden,
+    };
+    const r = line.getBoundingClientRect();
+    shown.nearBottom = r.bottom > innerHeight * 0.75;
+    return shown;
+  });
+  assert.deepEqual(thought, {
+    visible: true,
+    text: 'So Simon did know Kate at college, but why would he lie about that?',
+    toast: false,
+    nearBottom: true,
+  });
+  if (process.argv.includes('--screenshots')) {
+    await page.evaluate(() => news('Game loaded. It’s gone 5pm.'));
+    await page.screenshot({
+      path: path.join(__dirname, 'analysis/screens/spoken-and-toast.png'),
+    });
+  }
+  await page.evaluate(() => acom.dispatchEvent(new Event('ended')));
+  await page.waitForFunction(
+    () => document.getElementById('spoken-line').hidden,
+    null,
+    { timeout: 3000 },
+  );
+  console.log(
+    'PASS: Jenks’s spoken thoughts show as captions regardless of CC and clear when he finishes',
+  );
   // Walk somewhere other than the hour's starting spot.
   await page
     .locator('#scene-routes button')

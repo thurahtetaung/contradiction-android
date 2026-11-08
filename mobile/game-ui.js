@@ -110,7 +110,7 @@
     $('ui-toast').textContent = text(value);
     $('ui-toast').hidden = false;
     mobileClock.clearUiTimeout(toastTimer);
-    toastTimer = later(() => ($('ui-toast').hidden = true), 3500);
+    toastTimer = later(() => ($('ui-toast').hidden = true), 2800);
   }
   window.mobileNotify = notify;
   const usable = () =>
@@ -151,6 +151,52 @@
   captionLayer.id = 'caption-layer';
   captionLayer.setAttribute('aria-live', 'polite');
   $('vidbox').appendChild(captionLayer);
+  // Jenks's spoken thoughts (the original's comment() lines, voiced by acom).
+  // The original always shows them, whatever the subtitle setting, so this
+  // line ignores CC. It sits where captions go, above any caption on screen.
+  const spokenLine = el('div', 'spoken-line');
+  spokenLine.id = 'spoken-line';
+  spokenLine.hidden = true;
+  spokenLine.setAttribute('aria-live', 'polite');
+  $('vidbox').appendChild(spokenLine);
+  let spokenTimer = 0;
+  function placeSpoken() {
+    if (spokenLine.hidden) return;
+    const pic = pictureRect();
+    let bottom = Math.max(
+      14,
+      innerHeight - (pic.top + pic.height) + pic.height * 0.05,
+    );
+    const cues = [...captionLayer.children];
+    if (cues.length)
+      bottom += Math.max(...cues.map((cue) => cue.offsetHeight)) + 10;
+    spokenLine.style.bottom = bottom + 'px';
+    spokenLine.style.maxWidth =
+      Math.min(pic.width * 0.7, innerWidth - 32) + 'px';
+  }
+  function hideSpoken() {
+    mobileClock.clearUiTimeout(spokenTimer);
+    spokenLine.hidden = true;
+  }
+  function showSpoken(words, seconds) {
+    const quote = String(words).replace(/^\u2018|\u2019$/g, '');
+    spokenLine.replaceChildren(el('span', '', quote));
+    spokenLine.hidden = false;
+    placeSpoken();
+    mobileClock.clearUiTimeout(spokenTimer);
+    // Until the voice line ends; this is only the fallback for silent lines.
+    const fallback = Math.max(
+      4000,
+      (Number(seconds) || 0) * 1000,
+      quote.length * 70,
+    );
+    spokenTimer = later(hideSpoken, fallback + 1500);
+  }
+  acom.addEventListener('ended', () => {
+    if (spokenLine.hidden) return;
+    mobileClock.clearUiTimeout(spokenTimer);
+    spokenTimer = later(hideSpoken, 700);
+  });
   function pictureRect() {
     const fill = localStorage.mobileFraming === 'fill';
     const width = fill
@@ -244,7 +290,10 @@
       }),
     );
   }
-  vplayer.textTracks[0]?.addEventListener('cuechange', renderCaptions);
+  vplayer.textTracks[0]?.addEventListener('cuechange', () => {
+    renderCaptions();
+    placeSpoken();
+  });
   addEventListener('resize', renderCaptions);
   const framing = () => {
     document.documentElement.classList.toggle(
@@ -1336,7 +1385,9 @@
     }
     const ready =
       vplayer.readyState >= 2 && started !== 1 && (readyOnce || abled === 1);
-    setHidden('ui-loading', ready);
+    // Startup only. Every clip change seeks the shared film, which briefly drops
+    // readyState below 2; showing the loader then flashed it between scenes.
+    setHidden('ui-loading', ready || readyOnce);
     if (ready && !readyOnce) {
       readyOnce = true;
       open('home');
@@ -1580,7 +1631,13 @@
   }
   // Our own caption overlay lives inside #wrap; its updates never need a re-render.
   const observer = new MutationObserver((records) => {
-    if (records.some((record) => !captionLayer.contains(record.target)))
+    if (
+      records.some(
+        (record) =>
+          !captionLayer.contains(record.target) &&
+          !spokenLine.contains(record.target),
+      )
+    )
       invalidate();
   });
   observer.observe($('wrap'), {
@@ -1630,7 +1687,8 @@
   const oldNews = news;
   news = function (message) {
     const result = oldNews(message);
-    notify(clearer[message] || message);
+    if (/^\u2018[\s\S]*\u2019$/.test(message)) showSpoken(message, comlength);
+    else notify(clearer[message] || message);
     invalidate();
     return result;
   };
