@@ -539,11 +539,7 @@
       compareLock = false;
       invalidate();
     }, 450);
-    later(() => {
-      if (!pairon && pair.every((value) => value === '') && abled === 1)
-        notify('Those statements are consistent. Try another pair.');
-      invalidate();
-    }, 1700);
+    later(invalidate, 1700);
   }
   function evidenceList(interview) {
     const list = el('div', 'evidence-list scroll');
@@ -1603,10 +1599,16 @@
       return result;
     };
   }
+  // The original reports a non-contradicting pair as "This reply turned out to
+  // be untrue." which reads as if a lie was caught. Say what actually happened.
+  const clearer = {
+    'This reply turned out to be untrue.':
+      "Those two statements don't contradict each other. Try another pair.",
+  };
   const oldNews = news;
   news = function (message) {
     const result = oldNews(message);
-    notify(message);
+    notify(clearer[message] || message);
     invalidate();
     return result;
   };

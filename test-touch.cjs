@@ -531,6 +531,12 @@ async function runModernTests(page) {
   pass(
     'Cross-evidence statement comparison triggers the original valid contradiction',
   );
+  await page.evaluate(() => news('This reply turned out to be untrue.'));
+  assert.equal(
+    await page.locator('#ui-toast').textContent(),
+    "Those two statements don't contradict each other. Try another pair.",
+  );
+  pass('A non-contradicting pair is reported clearly, once');
   await page.evaluate(() => {
     mobileSuspend();
     mobileSuspend();
