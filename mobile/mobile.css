@@ -19,6 +19,58 @@
   font-family: maintex, Georgia, serif;
   font-size: 16px;
 }
+.playing-prologue #scene-header,
+.playing-prologue #scene-hotspots,
+.playing-prologue #scene-routes,
+.playing-prologue #replay-tools {
+  visibility: hidden !important;
+}
+.in-film .scene-utility {
+  display: none;
+}
+.has-panel #scene-hotspots {
+  visibility: hidden;
+}
+#scene-hotspots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.search-hotspot > img {
+  width: 44px;
+  height: 44px;
+}
+.prologue-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(#0004, transparent 70px);
+}
+.prologue-controls > .eyebrow {
+  position: absolute;
+  left: var(--safe-left);
+  top: 22px;
+}
+.prologue-tools {
+  position: absolute;
+  right: var(--safe-right);
+  top: 10px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+.prologue-tools > .icon-only {
+  background: transparent;
+  border-color: transparent;
+}
+.prologue-controls > .quiet {
+  position: absolute;
+  right: var(--safe-right);
+  bottom: 16px;
+  background: #0b1311ad;
+  color: #eee4ce;
+  border: 1px solid #c8a36640;
+}
 * {
   box-sizing: border-box;
   -webkit-user-select: none;
@@ -261,25 +313,8 @@ h3 {
   opacity: 1;
 }
 .has-panel #scene-header,
-.has-panel #scene-actions,
 .has-panel #scene-routes {
   visibility: hidden;
-}
-#scene-actions {
-  position: absolute;
-  bottom: max(16px, env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  max-width: 100%;
-  padding: 0 12px;
-}
-#scene-actions .ui-button {
-  background: #101615ed;
-  border-color: #c8a36666;
-  min-width: 108px;
-  box-shadow: 0 4px 16px #0005;
 }
 .available {
   color: #e5c583;
@@ -1090,10 +1125,6 @@ h3 {
   .home-brief h2 {
     font-size: 26px;
   }
-  #scene-actions .ui-button {
-    min-width: 90px;
-    font-size: 13px;
-  }
   .route {
     font-size: 12px;
   }
@@ -1172,36 +1203,6 @@ h3 {
   background: transparent;
   opacity: 0.65;
 }
-#scene-actions {
-  gap: 0;
-  padding: 3px 6px;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  border-radius: 32px;
-  border: 1px solid #c8a36630;
-  background: #0b1311c9;
-  box-shadow: 0 4px 20px #0003;
-}
-#scene-actions .ui-button {
-  min-width: 62px;
-  min-height: 46px;
-  gap: 3px;
-  flex-direction: column;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  font-size: 9px;
-  letter-spacing: 0.4px;
-  padding: 5px 10px;
-  border-radius: 24px;
-  color: #d5c8ae;
-}
-#scene-actions .ui-button svg {
-  width: 18px;
-  height: 18px;
-}
-#scene-actions .ui-button:active {
-  background: #b49a5933;
-}
 #scene-header {
   padding-top: 10px;
   padding-bottom: 22px;
@@ -1231,4 +1232,8 @@ h3 {
   .case-rule {
     display: none;
   }
+}
+.icon-only[aria-pressed='true'] {
+  color: #e5c583;
+  border-color: #d7b56c !important;
 }

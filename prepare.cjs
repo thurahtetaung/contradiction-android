@@ -14,8 +14,24 @@ for (const name of ['gfx', 'sound'])
     recursive: true,
     filter: (file) => !file.endsWith('.mp4') && !file.endsWith('.DS_Store'),
   });
-for (const name of ['game.js', 'sub.vtt'])
-  fs.copyFileSync(path.join(source, name), path.join(dest, name));
+fs.copyFileSync(path.join(source, 'game.js'), path.join(dest, 'game.js'));
+// The original subtitles skip the narrated prologue; merge in our transcription.
+{
+  const original = fs.readFileSync(path.join(source, 'sub.vtt'), 'utf8');
+  const prologue = fs
+    .readFileSync(
+      path.join(__dirname, 'mobile', 'prologue-captions.vtt'),
+      'utf8',
+    )
+    .split(/\r?\n\r?\n/)
+    .filter((part) => part.includes('-->'))
+    .join('\n\n');
+  const split = original.search(/\r?\n\r?\n/);
+  fs.writeFileSync(
+    path.join(dest, 'sub.vtt'),
+    original.slice(0, split) + '\n\n' + prologue + original.slice(split),
+  );
+}
 let html = fs.readFileSync(path.join(source, 'index.html'), 'utf8');
 html = html
   .replaceAll('gfx/arrows/Tips', 'gfx/Tips')

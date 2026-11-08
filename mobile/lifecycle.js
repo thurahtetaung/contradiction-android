@@ -17,12 +17,12 @@
     if (reasons.has(reason)) return;
     if (!reasons.size) {
       playing.clear();
-      document.querySelectorAll('video,audio').forEach((media) => {
-        if (!media.paused) playing.add(media);
-        media.pause();
-      });
-      mobileClock.pause();
     }
+    document.querySelectorAll('video,audio').forEach((media) => {
+      if (!media.paused) playing.add(media);
+      media.pause();
+    });
+    mobileClock.pause();
     reasons.add(reason);
   };
   window.mobileUnpause = (reason) => {

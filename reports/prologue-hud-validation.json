@@ -1,0 +1,6 @@
+{
+  "version": "0.9-cinematic",
+  "prologue": ["Fresh investigation starts original prologue", "Automatic completion enters the story", "Confirmed reset replays prologue", "Explicit Skip", "Title replay preserves manual saves", "Pause and background/resume"],
+  "hud": ["No bottom dock", "Casebook and Map are top icons", "Original Search artwork appears only with invest=1 and usable exploration state", "Search calls original investigation action"],
+  "regression": "Cinematic layout, save/load/reset, map, interviews, deduction and lifecycle integration suite passed"
+}

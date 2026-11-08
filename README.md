@@ -1,6 +1,8 @@
 # Contradiction — Cinematic Android edition
 
-An Android adaptation of a locally supplied PC copy of **Contradiction – Spot the Liar**, preserving the original story engine, art and media with a rebuilt cinematic touch interface. Version 0.8 replaces the desktop presentation with a fullscreen film view, original hand-drawn navigation arrows, a compact floating dock, evidence casebook, touch map, interview desk and cross-evidence comparison tray. The title and pause screens use the original branding and village art.
+An Android adaptation of a locally supplied PC copy of **Contradiction – Spot the Liar**, preserving the original story engine, art and media with a rebuilt cinematic touch interface. The interface includes a fullscreen film view, original hand-drawn navigation arrows, evidence casebook, touch map, interview desk and cross-evidence comparison tray. The title and pause screens use the original branding and village art. Version 0.9 puts Casebook and Map beside the top controls and shows the original Search hotspot only when investigation is available; there is no bottom dock.
+
+Fresh investigations and confirmed resets play the original prologue before entering the village. It advances automatically at the clip boundary, supports pause/background resume and provides an explicit Skip action. Watch prologue on the title screen replays it without changing story state. Playback reuses the original video/decoder while freezing story timers, and restores the previous video position and volume afterward.
 
 Video, audio and story timers pause together while the title/pause menu is open. The old desktop tutorials, controller setup and keyboard strip are not used. Original framing is preserved by default; an optional Fill display setting crops to wide screens. Android handles immersive fullscreen, camera-cutout insets, Back navigation, storage and lifecycle. Save data and imported media remain compatible with previous prototype installs.
 

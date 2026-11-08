@@ -13,7 +13,8 @@
     compareLock = false,
     toastTimer,
     ownTranscript = '',
-    completedShown = false;
+    completedShown = false,
+    prologue = null;
   const signatures = new Map();
   const text = (value) => {
     const node = document.createElement('div');
@@ -88,7 +89,7 @@
   const root = el('main', 'game-ui');
   root.id = 'game-ui';
   root.innerHTML =
-    '<header id="scene-header"><div class="scene-location"><span class="eyebrow" id="scene-time"></span><span id="scene-place"></span></div><div id="scene-tools"></div></header><nav id="scene-actions" aria-label="Explore"></nav><nav id="scene-routes" aria-label="Available paths"></nav><section id="ui-panel" hidden><header id="panel-header"></header><nav id="panel-tabs"></nav><div id="panel-body"></div></section><section id="ui-home" hidden></section><div id="ui-loading"><img src="gfx/Logo.png" alt="Contradiction"><span class="eyebrow">Preparing your investigation</span></div><div id="ui-dialog" hidden></div><div id="ui-toast" role="status" hidden></div><div id="replay-tools" hidden></div>';
+    '<header id="scene-header"><div class="scene-location"><span class="eyebrow" id="scene-time"></span><span id="scene-place"></span></div><div id="scene-tools"></div></header><nav id="scene-hotspots" aria-label="Explore"></nav><nav id="scene-routes" aria-label="Available paths"></nav><section id="ui-panel" hidden><header id="panel-header"></header><nav id="panel-tabs"></nav><div id="panel-body"></div></section><section id="ui-home" hidden></section><div id="ui-loading"><img src="gfx/Logo.png" alt="Contradiction"><span class="eyebrow">Preparing your investigation</span></div><div id="ui-dialog" hidden></div><div id="ui-toast" role="status" hidden></div><div id="replay-tools" hidden></div>';
   document.body.appendChild(root);
   function notify(value) {
     $('ui-toast').textContent = text(value);
@@ -117,6 +118,11 @@
     vplayer.textTracks[0].mode = subon ? 'showing' : 'hidden';
     localStorage.mobileCaptions = String(subon);
     notify(subon ? 'Captions on' : 'Captions off');
+    document
+      .querySelectorAll('#game-ui [aria-label="Captions"]')
+      .forEach((node) =>
+        node.setAttribute('aria-pressed', subon ? 'true' : 'false'),
+      );
   }
   if (localStorage.mobileCaptions === '1') {
     subon = 1;
@@ -129,6 +135,16 @@
     );
   framing();
   $('scene-tools').append(
+    button(
+      'Casebook',
+      () => {
+        tab = 'evidence';
+        open('journal');
+      },
+      'book',
+      'icon-only scene-utility',
+    ),
+    button('Map', () => open('map'), 'map', 'icon-only scene-utility'),
     button('Captions', captions, 'cc', 'icon-only'),
     button('Pause', () => open('home'), 'pause', 'icon-only'),
   );
@@ -244,14 +260,18 @@
             } else {
               pane = '';
               toolson = greenops = greenon = 0;
-              mobileUnpause('menu');
               if (kind === 'Reset') {
                 thend = 0;
                 completedShown = false;
                 topoff('credits');
                 resetting = 1;
                 goload(localStorage.reset);
-              } else loader('Save' + slot);
+                saver('game');
+                playPrologue(() => mobileUnpause('menu'));
+              } else {
+                mobileUnpause('menu');
+                loader('Save' + slot);
+              }
             }
           },
         },
@@ -261,6 +281,13 @@
   }
   function begin() {
     if (started === 1 || vplayer.readyState < 2) return;
+    if (started === 2 && !localStorage.game) {
+      playPrologue(beginStory);
+      return;
+    }
+    beginStory();
+  }
+  function beginStory() {
     pane = '';
     toolson = greenops = greenon = 0;
     mobileUnpause('menu');
@@ -269,6 +296,103 @@
     else closewood();
     invalidate();
   }
+  function playPrologue(after) {
+    if (prologue) return;
+    mobilePause('menu');
+    const index = vidMoves.indexOf('prologue');
+    if (index < 0) {
+      after?.();
+      return;
+    }
+    prologue = {
+      after,
+      time: vplayer.currentTime,
+      volume: vplayer.volume,
+      opacity: $('mainview').style.opacity,
+      end: vidMoves[index + 2] + vidMoves[index + 1],
+    };
+    const session = prologue;
+    pane = '';
+    // Freeze the story engine and reuse the original video/decoder for the film.
+    $('mainview').style.opacity = '1';
+    vplayer.volume = 1;
+    vplayer.currentTime = vidMoves[index + 2];
+    vplayer.play();
+    const controls = el('section', 'prologue-controls');
+    controls.id = 'prologue-controls';
+    controls.append(
+      el('span', 'eyebrow', 'PROLOGUE'),
+      prologueTools(),
+      button('Skip prologue', finishPrologue, 'arrow', 'quiet'),
+    );
+    root.appendChild(controls);
+    invalidate();
+    function frameEnd() {
+      if (prologue !== session) return;
+      if (vplayer.currentTime >= prologue.end - 1 / 24) {
+        finishPrologue();
+        return;
+      }
+      if (vplayer.requestVideoFrameCallback)
+        vplayer.requestVideoFrameCallback(frameEnd);
+    }
+    if (vplayer.requestVideoFrameCallback)
+      vplayer.requestVideoFrameCallback(frameEnd);
+  }
+  function prologueTools() {
+    const tools = el('div', 'prologue-tools');
+    const cc = button('Captions', captions, 'cc', 'icon-only');
+    cc.setAttribute('aria-pressed', subon ? 'true' : 'false');
+    tools.append(
+      cc,
+      button('Pause prologue', pausePrologue, 'pause', 'icon-only'),
+    );
+    return tools;
+  }
+  function finishPrologue() {
+    if (!prologue) return;
+    const active = prologue;
+    prologue = null;
+    vplayer.pause();
+    vplayer.currentTime = active.time;
+    vplayer.volume = active.volume;
+    $('mainview').style.opacity = active.opacity;
+    $('prologue-controls')?.remove();
+    closeDialog();
+    signatures.clear();
+    pane = active.after ? '' : 'home';
+    active.after?.();
+    invalidate();
+  }
+  function pausePrologue() {
+    if (!prologue) return;
+    vplayer.pause();
+    dialog(
+      'Prologue paused',
+      'Continue watching or go straight to the investigation.',
+      [
+        {
+          label: 'Continue watching',
+          icon: 'play',
+          action: () => vplayer.play(),
+        },
+        { label: 'Skip prologue', icon: 'arrow', action: finishPrologue },
+      ],
+    );
+  }
+  vplayer.addEventListener('timeupdate', () => {
+    if (
+      prologue &&
+      !vplayer.requestVideoFrameCallback &&
+      vplayer.currentTime >= prologue.end - 0.05
+    )
+      finishPrologue();
+  });
+  const resumeMedia = mobileResume;
+  window.mobileResume = () => {
+    resumeMedia();
+    if (prologue && !modal) vplayer.play();
+  };
   function heading(title, description) {
     const node = el('div', 'section-heading');
     node.appendChild(el('h2', '', title));
@@ -786,6 +910,7 @@
         const footer = el('div', 'home-footer');
         footer.append(
           button('Credits', () => open('credits'), null, 'quiet'),
+          button('Watch prologue', () => playPrologue(), 'play', 'quiet'),
           button('New investigation', () => confirm('Reset', 0), null, 'quiet'),
         );
         if (started === 0)
@@ -1014,6 +1139,13 @@
     update('panel-body', pane + '|' + key, build);
   }
   function render() {
+    root.classList.toggle('playing-prologue', !!prologue);
+    if (prologue) {
+      $('ui-home').hidden = true;
+      $('ui-panel').hidden = true;
+      $('ui-loading').hidden = true;
+      return;
+    }
     if (tipon) {
       tipon = 0;
       tip = 8;
@@ -1136,30 +1268,71 @@
               })
               .filter(Boolean),
     );
-    update('scene-actions', [usable(), invest, curchar, pane].join('|'), () => {
-      if (pane || !usable()) return [];
-      const search = button(
-        'Search',
-        () => {
-          if (usable()) investigate();
-        },
-        'search',
-      );
-      search.disabled = !!curchar;
-      search.classList.toggle('available', invest === 1);
-      return [
-        button(
-          'Casebook',
+    update(
+      'scene-hotspots',
+      [
+        usable(),
+        invest,
+        curchar,
+        pane,
+        innerWidth,
+        innerHeight,
+        localStorage.mobileFraming,
+        signatures.get('scene-routes'),
+      ].join('|'),
+      () => {
+        if (pane || !usable() || invest !== 1 || curchar !== 0) return [];
+        const search = button(
+          'Search',
           () => {
-            tab = 'evidence';
-            open('journal');
+            if (usable() && invest === 1) investigate();
           },
-          'book',
-        ),
-        button('Map', () => open('map'), 'map'),
-        search,
-      ];
-    });
+          null,
+          'route-marker search-hotspot',
+        );
+        const art = el('img');
+        art.src = 'gfx/arrows/I.png';
+        art.alt = '';
+        search.prepend(art);
+        const width =
+            localStorage.mobileFraming === 'fill'
+              ? Math.max(innerWidth, (innerHeight * 16) / 9)
+              : Math.min(innerWidth, (innerHeight * 16) / 9),
+          height = (width * 9) / 16;
+        // Original corner spot, nudged clear of any route arrow it would cover.
+        const half = 36,
+          gap = 8,
+          minY = 76 + half,
+          maxY = innerHeight - 44;
+        let x = Math.max(
+            44,
+            Math.min(innerWidth - 52, (innerWidth - width) / 2 + width * 0.905),
+          ),
+          y = Math.max(
+            minY,
+            Math.min(maxY, (innerHeight - height) / 2 + height * 0.86),
+          );
+        const routes = [...$('scene-routes').children].map((node) =>
+          node.getBoundingClientRect(),
+        );
+        const hit = () =>
+          routes.find(
+            (r) =>
+              x + half + gap > r.left &&
+              x - half - gap < r.right &&
+              y + half + gap > r.top &&
+              y - half - gap < r.bottom,
+          );
+        for (let tries = 0, r; tries < 6 && (r = hit()); tries++) {
+          const above = r.top - gap - half;
+          if (above >= minY) y = above;
+          else x = Math.max(44, r.left - gap - half);
+        }
+        search.style.left = x + 'px';
+        search.style.top = y + 'px';
+        return [search];
+      },
+    );
     $('replay-tools').hidden = recalled !== 2;
     update('replay-tools', recalled === 2 ? 'replay' : '', () =>
       recalled === 2
@@ -1282,6 +1455,11 @@
   window.mobileBack = () => {
     if (modal) {
       closeDialog();
+      if (prologue) vplayer.play();
+      return true;
+    }
+    if (prologue) {
+      pausePrologue();
       return true;
     }
     if (recalled === 2) {

@@ -1,23 +1,31 @@
-Contradiction - Cinematic Android edition v0.8
+Contradiction - Cinematic Android edition v0.9
 
 Requires Android 8.0 or later. Update the existing installation to retain
 the imported video, resume progress and both manual save slots.
 
 INSTALL
-Install Contradiction-Android-v0.8.apk. On the first installation, copy the
+Install Contradiction-Android-v0.9.apk. On the first installation, copy the
 original Windows/gfx/MCMV.mp4 to Downloads and choose Import game video.
 Wait for Import complete, then the Downloads copy can be deleted. Import
 needs approximately 2.4 GB of additional free space while copying.
 An existing imported video is reused automatically after an APK update.
 
 PLAY
-Begin or continue from the title screen. The film fills the app viewport;
+Begin or continue from the title screen. Fresh investigations and confirmed
+new-game resets play the original prologue first. Skip prologue proceeds
+directly to the investigation. Watch prologue on the title screen replays
+it without resetting progress. Pause and background/resume also work while
+watching the prologue.
+
+The film fills the app viewport;
 Original frame preserves the entire image, and Fill display in Settings
 crops the edges to fit wide displays. Video and audio are not re-encoded.
 
 Tap the original hand-drawn arrows to explore. Their visible artwork is
-small, with larger invisible tap targets. A compact floating dock opens
-the Casebook, Map and Search. Controls clear away during scenes.
+small, with larger invisible tap targets. Casebook and Map are minimal
+icons alongside Captions and Pause at the top. Search appears in the scene
+only when investigation is available, using the original magnifying-glass
+art. There is no bottom dock. Controls clear away during scenes.
 
 CASEBOOK: browse collected evidence, recorded events, contradictions and
 advice from the Chief. Select an item to read its description and notes.

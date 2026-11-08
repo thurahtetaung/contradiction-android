@@ -223,6 +223,48 @@ async function runModernTests(page) {
   await page
     .getByRole('button', { name: 'Begin investigation', exact: true })
     .tap();
+  await page
+    .getByRole('button', { name: 'Skip prologue', exact: true })
+    .waitFor();
+  assert.equal(await page.evaluate(() => mobileClock.paused), true);
+  await page.waitForFunction(
+    () =>
+      vplayer.currentTime >= 18 && vplayer.currentTime < 21 && !vplayer.paused,
+  );
+  const prologueCC = page
+    .locator('#prologue-controls')
+    .getByRole('button', { name: 'Captions', exact: true });
+  const ccWasOn = await page.evaluate(() => subon === 1);
+  await prologueCC.tap();
+  assert.equal(
+    await prologueCC.getAttribute('aria-pressed'),
+    ccWasOn ? 'false' : 'true',
+  );
+  if (ccWasOn) await prologueCC.tap();
+  await page.waitForFunction(
+    () =>
+      vplayer.textTracks[0].mode === 'showing' &&
+      [...(vplayer.textTracks[0].activeCues || [])].some((cue) =>
+        cue.text.startsWith('My name is Jenks'),
+      ),
+  );
+  await page.getByRole('button', { name: 'Pause prologue', exact: true }).tap();
+  assert.equal(await page.evaluate(() => vplayer.paused), true);
+  await page
+    .getByRole('button', { name: 'Continue watching', exact: true })
+    .tap();
+  await screenshot('prologue-captions');
+  pass('Prologue shows narration captions with a working CC toggle');
+  await page.evaluate(() => {
+    const index = vidMoves.indexOf('prologue');
+    vplayer.currentTime = vidMoves[index + 2] + vidMoves[index + 1] - 0.25;
+  });
+  await page.waitForFunction(
+    () => started === 0 && !document.getElementById('prologue-controls'),
+  );
+  pass(
+    'Fresh investigations play the original prologue and advance automatically at its end',
+  );
   assert.equal(await page.evaluate(() => started), 0);
   await page.evaluate(() => {
     mobileUI.open('home');
@@ -252,12 +294,42 @@ async function runModernTests(page) {
     mobileUI.invalidate();
   });
   await screenshot('exploration');
+  assert.equal(await page.locator('#scene-actions').count(), 0);
+  await page.evaluate(() => {
+    window.priorInvest = invest;
+    invest = 0;
+    mobileUI.invalidate();
+  });
+  await page.waitForFunction(
+    () => !document.querySelector('#scene-hotspots button'),
+  );
+  await page.evaluate(() => {
+    invest = 1;
+    window.searchCalls = 0;
+    window.originalInvestigate = investigate;
+    investigate = () => searchCalls++;
+    mobileUI.invalidate();
+  });
   await page
-    .locator('#scene-actions')
+    .locator('#scene-hotspots')
+    .getByRole('button', { name: 'Search', exact: true })
+    .tap();
+  assert.equal(await page.evaluate(() => searchCalls), 1);
+  await page.evaluate(() => {
+    invest = priorInvest;
+    investigate = originalInvestigate;
+    mobileUI.invalidate();
+  });
+  pass(
+    'Search is a contextual original-art hotspot; Casebook and Map use top icons with no bottom bar',
+  );
+  await page
+    .locator('#scene-tools')
     .getByRole('button', { name: 'Casebook', exact: true })
     .tap();
   await page.locator('[data-item="0"]').tap();
   assert.equal(await page.evaluate(() => curq), 0);
+  await page.locator('.item-detail[data-item="0"]').waitFor();
   await screenshot('evidence');
   assert.equal(
     await page
@@ -328,7 +400,7 @@ async function runModernTests(page) {
     'Save/Cancel are separate; both slots preserve original save data and metadata',
   );
   await page
-    .locator('#scene-actions')
+    .locator('#scene-tools')
     .getByRole('button', { name: 'Casebook', exact: true })
     .tap();
   await page
@@ -351,7 +423,7 @@ async function runModernTests(page) {
     .getByRole('button', { name: 'Back', exact: true })
     .tap();
   await page
-    .locator('#scene-actions')
+    .locator('#scene-tools')
     .getByRole('button', { name: 'Map', exact: true })
     .tap();
   await screenshot('map');
@@ -488,6 +560,12 @@ async function runModernTests(page) {
     .getByRole('button', { name: 'Begin again', exact: true })
     .tap();
   assert.equal(await page.evaluate(() => traps[4]), 0);
+  await page
+    .getByRole('button', { name: 'Skip prologue', exact: true })
+    .waitFor();
+  assert.equal(await page.evaluate(() => mobileClock.paused), true);
+  await page.getByRole('button', { name: 'Skip prologue', exact: true }).tap();
+  await page.waitForFunction(() => !mobileClock.paused);
   assert.equal(
     await page.evaluate(
       () =>
@@ -498,6 +576,30 @@ async function runModernTests(page) {
   );
   pass(
     'New investigation resets story state only after confirmation and retains manual saves',
+  );
+  await page.evaluate(() => mobileUI.open('home'));
+  const savedBeforeReplay = await page.evaluate(() => localStorage.Save1);
+  await page.getByRole('button', { name: 'Watch prologue', exact: true }).tap();
+  await page.waitForFunction(
+    () =>
+      vplayer.currentTime >= 18 && vplayer.currentTime < 22 && !vplayer.paused,
+  );
+  await page.evaluate(() => mobileSuspend());
+  assert.equal(await page.evaluate(() => vplayer.paused), true);
+  await page.evaluate(() => mobileResume());
+  await page.waitForFunction(() => !vplayer.paused);
+  await page.getByRole('button', { name: 'Skip prologue', exact: true }).tap();
+  await page.locator('#ui-home').waitFor({ state: 'visible' });
+  assert.equal(
+    await page.evaluate(() => localStorage.Save1),
+    savedBeforeReplay,
+  );
+  assert.equal(
+    await page.evaluate(() => mobileClock.paused && vplayer.paused),
+    true,
+  );
+  pass(
+    'Prologue replay survives background/resume, returns to title and preserves saves',
   );
   assert.equal(
     await page.evaluate(() => {
