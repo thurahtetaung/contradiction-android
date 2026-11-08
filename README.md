@@ -1,6 +1,8 @@
-# Contradiction Android prototype
+# Contradiction — Cinematic Android edition
 
-Android port adapter for a locally supplied PC copy of **Contradiction – Spot the Liar**. The app imports the original video into private storage, supports both landscape orientations, and adds direct touch menus, save confirmations, movement, inventory selection, and suspect replies.
+An Android adaptation of a locally supplied PC copy of **Contradiction – Spot the Liar**, preserving the original story engine, art and media with a rebuilt cinematic touch interface. Version 0.8 replaces the desktop presentation with a fullscreen film view, original hand-drawn navigation arrows, a compact floating dock, evidence casebook, touch map, interview desk and cross-evidence comparison tray. The title and pause screens use the original branding and village art.
+
+Video, audio and story timers pause together while the title/pause menu is open. The old desktop tutorials, controller setup and keyboard strip are not used. Original framing is preserved by default; an optional Fill display setting crops to wide screens. Android handles immersive fullscreen, camera-cutout insets, Back navigation, storage and lifecycle. Save data and imported media remain compatible with previous prototype installs.
 
 The repository contains the Android wrapper, mobile adapters, build scripts, icon, and tests. Original game scripts, graphics, audio, subtitles, installers, and video are supplied locally and excluded from Git. APK outputs, local SDK paths, emulator images, and signing keys are also excluded.
 
@@ -36,9 +38,11 @@ npm test
 
 Set `CHROME_PATH` to use an existing Chrome executable. Touch regression tests exercise the actual game scripts and DOM through a local test-only HTTP server. Test saves exist in a temporary browser context and never affect phone saves.
 
-`profile-phone.cjs VERSION OUTPUT.json` measures the active WebView for ten seconds through an ADB-forwarded debugging socket at port 9223. It requires a debug build. It does not navigate the game or modify saves. `check-device.cjs --smoke` changes game state and is intended for a test emulator only.
+`profile-phone.cjs VERSION OUTPUT.json` measures the active WebView for ten seconds through an ADB-forwarded debugging socket at port 9223. It requires a debug build. It does not navigate the game or modify saves. `check-device.cjs` reports the current pane, timer state and media metadata without changing state. Its optional expression argument is intended for controlled test-device inspection.
 
-Measured reports are in [reports](reports). The original desktop animation loop continued requesting frames when the inventory was stationary. Version 0.7 stops that loop until inventory movement is needed, replaces touch-menu polling with invalidation from game functions and DOM changes, and bypasses the neutral `saturate(1) contrast(1)` filter. Non-neutral colour settings still apply. Story timers, video frames, audio samples, and animation interpolation remain unchanged.
+The current integration suite covers three landscape layouts, fullscreen bounds, media and delayed-callback pause/resume, evidence selection, both save slots, cancellation, loading, original-map travel, Chief advice, witness questioning and an original valid cross-evidence deduction. Tests use temporary browser storage. Native fullscreen, cutout spacing, Back and bridge availability were checked on the S25+. A complete story playthrough remains untested.
+
+Historical version 0.6/0.7 measurements are in [reports](reports). Version 0.8 keeps the neutral-filter optimization, removes the unused desktop inventory animation and uses event-driven interface invalidation. A resumable timer registry preserves remaining delays while paused and maintains interval cadence while playing. The original video and audio bytes are unchanged.
 
 Short samples measure work counters, not battery capacity or heat reduction. The S25+ was USB charging during testing, and both builds used the Qualcomm hardware AVC decoder. Desktop and phone task-time results are noisy; the reports do not establish a reduction in total CPU time or temperature.
 

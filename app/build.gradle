@@ -6,8 +6,8 @@ android {
         applicationId 'local.contradiction.android'
         minSdk 26
         targetSdk 35
-        versionCode 7
-        versionName '0.7-prototype'
+        versionCode 8
+        versionName '0.8-cinematic'
     }
     buildFeatures { buildConfig = true }
     buildTypes {
@@ -17,7 +17,7 @@ android {
             signingConfig signingConfigs.debug
             minifyEnabled true
             shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     androidResources { noCompress += [''] }

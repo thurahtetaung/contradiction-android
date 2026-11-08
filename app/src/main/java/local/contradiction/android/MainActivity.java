@@ -30,6 +30,7 @@ public class MainActivity extends Activity {
     private boolean importing;
     private volatile boolean destroyed;
     private Thread importThread;
+    private int safeLeft, safeRight;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -52,7 +53,21 @@ public class MainActivity extends Activity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         web.setBackgroundColor(0xff000000);
         web.setWebChromeClient(new WebChromeClient());
+        web.addJavascriptInterface(new Object() {
+            @JavascriptInterface public void importVideo() { runOnUiThread(() -> pickMovie()); }
+            @JavascriptInterface public void exitGame() {
+                runOnUiThread(() -> web.evaluateJavascript("window.mobileSuspend && window.mobileSuspend()", value -> finish()));
+            }
+        }, "AndroidGame");
+        if (Build.VERSION.SDK_INT >= 28) web.setOnApplyWindowInsetsListener((view, insets) -> {
+            android.view.DisplayCutout cutout = insets.getDisplayCutout();
+            float density = getResources().getDisplayMetrics().density;
+            safeLeft = cutout == null ? 0 : (int)Math.ceil(cutout.getSafeInsetLeft() / density);
+            safeRight = cutout == null ? 0 : (int)Math.ceil(cutout.getSafeInsetRight() / density);
+            applySafeArea(); return insets;
+        });
         web.setWebViewClient(new WebViewClient() {
+            @Override public void onPageFinished(WebView view, String url) { applySafeArea(); }
             @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 return !HOST.equals(r.getUrl().getHost());
             }
@@ -80,17 +95,37 @@ public class MainActivity extends Activity {
     }
 
     private void immersive() {
-        getWindow().getDecorView().setSystemUiVisibility(5894);
+        View decor = getWindow().getDecorView();
+        decor.setSystemUiVisibility(5894);
+        if (Build.VERSION.SDK_INT >= 30) {
+            getWindow().setDecorFitsSystemWindows(false);
+            android.view.WindowInsetsController controller = decor.getWindowInsetsController();
+            if (controller != null) {
+                controller.hide(android.view.WindowInsets.Type.systemBars());
+                controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else getWindow().getDecorView().setSystemUiVisibility(5894);
+        if (Build.VERSION.SDK_INT >= 28) {
+            WindowManager.LayoutParams params = getWindow().getAttributes();
+            params.layoutInDisplayCutoutMode = Build.VERSION.SDK_INT >= 30 ? WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS : WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(params);
+        }
     }
+    private void applySafeArea() {
+        if (web != null) web.evaluateJavascript("document.documentElement.style.setProperty('--android-safe-left','" + safeLeft + "px');document.documentElement.style.setProperty('--android-safe-right','" + safeRight + "px');if(window.mobileUI)mobileUI.invalidate()", null);
+    }
+    @Override public void onWindowFocusChanged(boolean hasFocus) { super.onWindowFocusChanged(hasFocus); if (hasFocus) immersive(); }
     private void showSetup(String message) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(48, 24, 48, 24);
         box.setGravity(Gravity.CENTER);
+        box.setBackground(new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR, new int[]{0xff252016,0xff101c1e}));
         TextView title = new TextView(this);
-        title.setText("CONTRADICTION · Android prototype"); title.setTextSize(24);
+        title.setText("Contradiction"); title.setTextSize(32); title.setTextColor(0xffd4b77f); title.setTypeface(android.graphics.Typeface.SERIF);
         TextView info = new TextView(this); info.setText(message); info.setTextSize(17);
-        Button choose = new Button(this); choose.setText("Import MCMV.mp4");
+        info.setTextColor(0xffd7ceba);info.setPadding(0,24,0,24);info.setMaxWidth((int)(660*getResources().getDisplayMetrics().density));
+        Button choose = new Button(this); choose.setText("Import game video");choose.setTextColor(0xff18120a);choose.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xffc8a366));
         choose.setOnClickListener(v -> pickMovie());
         box.addView(title); box.addView(info); box.addView(choose); setContentView(box);
     }
@@ -124,9 +159,12 @@ public class MainActivity extends Activity {
         if (loaded) web.evaluateJavascript("window.mobileSuspend && window.mobileSuspend()", null);
         LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER); box.setPadding(64, 32, 64, 32);
+        box.setBackground(new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR,new int[]{0xff252016,0xff101c1e}));
         TextView label = new TextView(this); label.setTextSize(22); label.setText("Importing game video… 0%");
+        label.setTextColor(0xffd4b77f);label.setTypeface(android.graphics.Typeface.SERIF);
         ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);
+        progress.setProgressTintList(android.content.res.ColorStateList.valueOf(0xffc8a366));
         TextView detail = new TextView(this);
         detail.setText("Creating the app's own copy. Keep the app open until import finishes. The original file will stay in Downloads.");
         box.addView(label); box.addView(progress, new LinearLayout.LayoutParams(-1, -2)); box.addView(detail);
@@ -296,13 +334,15 @@ public class MainActivity extends Activity {
     }
     @Override public void onBackPressed() {
         if (importing) { Toast.makeText(this, "Video import in progress", Toast.LENGTH_SHORT).show(); return; }
-        new AlertDialog.Builder(this).setTitle("Contradiction")
-            .setItems(new String[]{"Resume", "Import video again", "Save and exit"}, (d, which) -> {
-                if (which == 1) pickMovie();
-                if (which == 2) {
-                    web.evaluateJavascript("window.mobileSuspend && window.mobileSuspend()", value -> finish());
-                }
-            }).show();
+        if (loaded) {
+            web.evaluateJavascript("Boolean(window.mobileBack && window.mobileBack())", handled -> { if (!"true".equals(handled)) showExitMenu(); });
+        } else finish();
+    }
+    private void showExitMenu() {
+        new AlertDialog.Builder(this).setTitle("Leave Edenton?")
+            .setMessage("Your investigation will be saved on this device.")
+            .setPositiveButton("Save and exit", (dialog, which) -> web.evaluateJavascript("window.mobileSuspend && window.mobileSuspend()", value -> finish()))
+            .setNegativeButton("Stay", null).show();
     }
     @Override protected void onPause() {
         foreground = false;

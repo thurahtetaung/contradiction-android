@@ -1,0 +1,9 @@
+{
+  "version": "0.8-cinematic",
+  "media": "Original video, audio, fonts, logo, item art, village art, map and directional artwork retained; no media re-encoding",
+  "interface": ["Fullscreen cinematic title and pause", "Original scene-positioned directional arrows with invisible touch targets", "Compact Casebook/Map/Search dock", "Evidence casebook", "Interview questions and cross-evidence comparison", "Original-art map", "Two compatible save slots", "Captions, framing and music settings", "Chief advice and recordings", "Original production credits"],
+  "browserValidation": ["Landscape layouts at 960x540, 832x384 and 676x320", "No keyboard strip or reserved viewport space", "Pause freezes media and delayed callbacks; resume preserves timers", "Evidence selection uses original data", "Save/cancel/load compatibility and metadata", "Original-map travel and Chief advice", "Question action updates original story records", "Valid cross-evidence contradiction triggers original story event", "Background resume save", "Confirmed reset preserves manual saves", "Gesture suppression"],
+  "s25Validation": ["Native fullscreen and camera-cutout spacing", "Android Back closes Settings", "Native import bridge available", "Original imported video reused", "Release APK update retains data"],
+  "build": "Release assemble and Android lint passed",
+  "limitation": "A complete end-to-end story playthrough has not been performed. Historical 0.6/0.7 performance reports do not describe the new paused title screen."
+}
