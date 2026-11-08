@@ -1233,7 +1233,7 @@ h3 {
     display: none;
   }
 }
-.icon-only[aria-pressed='true'] {
-  color: #e5c583;
-  border-color: #d7b56c !important;
+/* Quiet toggle state: on looks like any other icon, off is dimmed. */
+.icon-only[aria-pressed='false'] {
+  opacity: 0.45;
 }
