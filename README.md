@@ -44,4 +44,4 @@ Short samples measure work counters, not battery capacity or heat reduction. The
 
 ## Video size
 
-The original video is already compressed. A stream-copy MP4 remux preserved the compressed video/audio hashes but increased the file size, so the app retains the original. A substantial size reduction would require a quality trade-off; no lossy transcode is applied.
+The original video is already compressed. A stream-copy MP4 remux preserved the compressed video/audio hashes but increased the file size, so the app retains the original. This experiment found no useful lossless size reduction. A smaller modern-codec transcode cannot be promised to preserve every decoded pixel and audio sample; no lossy transcode is applied.
