@@ -723,10 +723,34 @@ async function runLocationMemoryTests(browser, url, errors) {
   await settled();
   const away = await where();
   assert.notEqual(away.scene, start.scene);
-  // Backgrounding writes the autosave that "Continue" uses after a restart.
-  await page.evaluate(() => mobileSuspend());
+  // The autosave catches up on its own while playing (no backgrounding).
+  await page.waitForFunction(
+    (scene) =>
+      JSON.parse(localStorage['mobile.saveInfo.game'] || 'null')?.scene ===
+      scene,
+    away.scene,
+    { timeout: 10000 },
+  );
   const autosave = await page.evaluate(() => localStorage.game);
   await page.evaluate(() => saver('Save1'));
+  // Case files: the autosave card is load-only and shows when it was saved.
+  await page
+    .locator('#scene-tools')
+    .getByRole('button', { name: 'Pause', exact: true })
+    .tap();
+  await page.getByRole('button', { name: 'Case files', exact: true }).tap();
+  const autoCard = page.locator('.autosave-card');
+  assert.equal(await autoCard.locator('[data-save]').count(), 0);
+  assert.equal(await autoCard.locator('[data-load="auto"]').isEnabled(), true);
+  assert.match(
+    await autoCard.textContent(),
+    /AUTOSAVE.*North Road Junction.*Saved just now/s,
+  );
+  await page
+    .locator('#panel-header')
+    .getByRole('button', { name: 'Back', exact: true })
+    .tap()
+    .catch(() => {});
   // Relaunch: "Continue investigation" returns to the same spot.
   await ready();
   await page.locator('#begin-investigation').tap();

@@ -835,7 +835,7 @@ h3 {
 .save-grid {
   padding: 28px var(--safe-right) 28px var(--safe-left);
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 20px;
   height: 100%;
   overflow: auto;
@@ -1270,4 +1270,15 @@ h3 {
 /* Quiet toggle state: on looks like any other icon, off is dimmed. */
 .icon-only[aria-pressed='false'] {
   opacity: 0.45;
+}
+
+/* The autosave is read-only: quieter frame, timestamp instead of a save button. */
+.autosave-card {
+  background: transparent;
+  border-style: dashed;
+}
+.save-time {
+  font-size: 13px;
+  color: #c8a366;
+  margin-top: -6px;
 }

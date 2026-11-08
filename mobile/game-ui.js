@@ -333,7 +333,10 @@
     modal = true;
   }
   function confirm(kind, slot) {
-    const saved = localStorage['Save' + slot];
+    const auto = slot === 'auto',
+      key = auto ? 'game' : 'Save' + slot;
+    if (auto && kind === 'Save') return;
+    const saved = localStorage[key];
     if (kind === 'Load' && !saved) {
       notify('No investigation has been saved here.');
       return;
@@ -341,7 +344,9 @@
     dialog(
       kind === 'Reset'
         ? 'Begin a new investigation?'
-        : `${kind === 'Save' && saved ? 'Replace' : kind} investigation ${slot}?`,
+        : auto
+          ? 'Load the autosave?'
+          : `${kind === 'Save' && saved ? 'Replace' : kind} investigation ${slot}?`,
       kind === 'Reset'
         ? 'Your current progress will restart. Manual save slots will be kept.'
         : kind === 'Save'
@@ -370,7 +375,7 @@
                 playPrologue(() => mobileUnpause('menu'));
               } else {
                 mobileUnpause('menu');
-                loader('Save' + slot);
+                loader(key);
               }
             }
           },
@@ -791,8 +796,60 @@
     layout.append(art, side);
     return [layout];
   }
+  function savedAgo(when) {
+    if (!when) return '';
+    const minutes = Math.round((Date.now() - when) / 60000);
+    if (minutes < 1) return 'Saved just now';
+    if (minutes < 60) return 'Saved ' + minutes + ' min ago';
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return 'Saved ' + hours + ' hr ago';
+    return 'Saved ' + new Date(when).toLocaleDateString();
+  }
+  function saveSummary(info) {
+    return (
+      'Friday, ' +
+      (info.time === 12 ? 'midnight' : 'after ' + info.time + 'pm') +
+      ' · ' +
+      info.progress +
+      '% solved'
+    );
+  }
   function buildSaves() {
     const layout = el('div', 'save-grid');
+    {
+      let info;
+      try {
+        info = JSON.parse(localStorage['mobile.saveInfo.game'] || 'null');
+      } catch {}
+      const exists = !!localStorage.game,
+        card = el('article', 'save-card autosave-card');
+      card.append(
+        el('span', 'eyebrow', 'AUTOSAVE'),
+        el(
+          'h2',
+          '',
+          exists ? info?.location || 'Start of the hour' : 'No autosave yet',
+        ),
+        el(
+          'p',
+          'muted',
+          exists
+            ? info
+              ? saveSummary(info)
+              : 'Your latest progress'
+            : 'Saved automatically as you investigate.',
+        ),
+      );
+      if (exists && info?.updated)
+        card.appendChild(el('p', 'save-time', savedAgo(info.updated)));
+      const actions = el('div', 'card-actions'),
+        load = button('Load', () => confirm('Load', 'auto'), 'play', 'primary');
+      load.dataset.load = 'auto';
+      load.disabled = !exists;
+      actions.append(load);
+      card.appendChild(actions);
+      layout.appendChild(card);
+    }
     [1, 2].forEach((slot) => {
       let info;
       try {
@@ -814,14 +871,16 @@
           'muted',
           exists
             ? info
-              ? `Friday, ${info.time === 12 ? 'midnight' : 'after ' + info.time + 'pm'} · ${info.progress}% solved`
+              ? saveSummary(info)
               : 'A previously saved investigation'
             : 'Keep a separate record of your progress here.',
         ),
       );
+      if (exists && info?.updated)
+        card.appendChild(el('p', 'save-time', savedAgo(info.updated)));
       const actions = el('div', 'card-actions'),
         save = button(
-          exists ? 'Replace save' : 'Save here',
+          exists ? 'Replace' : 'Save here',
           () => confirm('Save', slot),
           'save',
         ),
@@ -1128,7 +1187,13 @@
     } else if (pane === 'saves') {
       title = 'Case files';
       kicker = 'YOUR INVESTIGATION';
-      key = [localStorage.Save1, localStorage.Save2, started].join('|');
+      key = [
+        localStorage.Save1,
+        localStorage.Save2,
+        localStorage['mobile.saveInfo.game'],
+        started,
+        Math.floor(Date.now() / 60000),
+      ].join('|');
       build = buildSaves;
     } else if (pane === 'settings') {
       title = 'Settings';
@@ -1463,7 +1528,37 @@
     frame = requestAnimationFrame(() => {
       frame = 0;
       render();
+      autosaveSoon();
     });
+  }
+  // Autosave while playing: shortly after anything changes, once the scene has
+  // settled (not walking, answering, replaying, in the prologue or a dialog).
+  // The original only wrote this slot on quit; Android also saves on pause.
+  let autosaveTimer = 0;
+  function autosaveSoon() {
+    if (autosaveTimer) return;
+    autosaveTimer = setTimeout(() => {
+      autosaveTimer = 0;
+      if (
+        started !== 0 ||
+        abled !== 1 ||
+        locon !== 0 ||
+        recalled ||
+        prologue ||
+        modal ||
+        thend > 0 ||
+        document.hidden ||
+        !currentScene()
+      )
+        return;
+      const quiet = savnews;
+      savnews = 0;
+      try {
+        saver('game');
+      } finally {
+        savnews = quiet;
+      }
+    }, 2500);
   }
   // Our own caption overlay lives inside #wrap; its updates never need a re-render.
   const observer = new MutationObserver((records) => {
@@ -1545,16 +1640,26 @@
   const oldSaver = saver;
   saver = function (slot) {
     const result = oldSaver(slot);
-    if (localStorage[slot])
-      localStorage['mobile.saveInfo.' + slot] = JSON.stringify({
-        location: text(newname || $('place').textContent),
-        time: timenow,
-        progress: progper,
-        updated: Date.now(),
-        scene: slot === 'reset' ? null : currentScene(),
-        save: fingerprint(localStorage[slot]),
-      });
-    invalidate();
+    if (localStorage[slot]) {
+      const key = 'mobile.saveInfo.' + slot,
+        scene = slot === 'reset' ? null : currentScene(),
+        save = fingerprint(localStorage[slot]);
+      let previous = null;
+      try {
+        previous = JSON.parse(localStorage[key] || 'null');
+      } catch {}
+      if (!previous || previous.save !== save || previous.scene !== scene)
+        localStorage[key] = JSON.stringify({
+          location: text(newname || $('place').textContent),
+          time: timenow,
+          progress: progper,
+          updated: Date.now(),
+          scene,
+          save,
+        });
+    }
+    // An autosave must not schedule another render -> autosave cycle.
+    if (slot !== 'game') invalidate();
     return result;
   };
   const oldLoad = loadstuff;
