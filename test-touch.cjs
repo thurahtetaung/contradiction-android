@@ -659,6 +659,11 @@ async function runModernTests(page) {
       };
     });
     assert.equal(box.align, side);
+    // As in the original: "left" cues sit right of centre, "right" cues left.
+    const centre = (box.picLeft + box.picRight) / 2;
+    if (side === 'left') assert.ok(box.left >= centre - 1, JSON.stringify(box));
+    if (side === 'right')
+      assert.ok(box.right <= centre + 1, JSON.stringify(box));
     assert.ok(box.left >= box.picLeft + 8, JSON.stringify(box));
     assert.ok(box.right <= box.picRight - 8, JSON.stringify(box));
     assert.ok(box.bottom <= box.height - 8, JSON.stringify(box));

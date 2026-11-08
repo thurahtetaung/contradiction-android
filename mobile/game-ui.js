@@ -191,7 +191,7 @@
     captionLayer.replaceChildren(
       ...cues.map((cue) => {
         const box = el('div', 'caption-cue');
-        const size = Math.min(
+        const wanted = Math.min(
           maxX - minX,
           Math.max(260, (pic.width * (cue.size || 50)) / 100),
         );
@@ -201,12 +201,32 @@
             : cue.align === 'right' || cue.align === 'end'
               ? 'right'
               : 'center';
-        const x =
+        // Match the original (2015 Chromium) layout: cues without a position
+        // were anchored at the middle of the picture, so "left" cues run
+        // rightwards from the centre and "right" cues end at the centre.
+        // Modern browsers anchor them at the edges instead, which flips sides.
+        const anchor =
+          pic.left +
+          (pic.width * (typeof cue.position === 'number' ? cue.position : 50)) /
+            100;
+        // A side cue keeps to its half of the picture, narrowing if needed.
+        const size =
           align === 'left'
-            ? minX
+            ? Math.min(wanted, maxX - anchor)
             : align === 'right'
-              ? maxX - size
-              : (minX + maxX - size) / 2;
+              ? Math.min(wanted, anchor - minX)
+              : wanted;
+        const x = Math.max(
+          minX,
+          Math.min(
+            maxX - size,
+            align === 'left'
+              ? anchor
+              : align === 'right'
+                ? anchor - size
+                : anchor - size / 2,
+          ),
+        );
         box.style.left = x + 'px';
         box.style.width = size + 'px';
         box.style.textAlign = align;
