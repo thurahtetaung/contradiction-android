@@ -984,12 +984,19 @@ h3 {
   font-size: 14px;
   pointer-events: none;
 }
+/* Top-left, where the (hidden during film) location header sits, so the
+   button never covers the dialogue captions at the bottom. */
 #replay-tools {
   position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 10px;
+  left: var(--safe-left);
   pointer-events: auto;
+}
+#replay-tools .ui-button {
+  background: #0b1311ad;
+  color: #eee4ce;
+  border: 1px solid #c8a36640;
+  box-shadow: none;
 }
 @media (max-height: 420px) {
   .home-brand {

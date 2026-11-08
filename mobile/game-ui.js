@@ -1437,14 +1437,7 @@
     setHidden('replay-tools', recalled !== 2);
     update('replay-tools', recalled === 2 ? 'replay' : '', () =>
       recalled === 2
-        ? [
-            button(
-              'Return to investigation',
-              () => stoprep(),
-              'back',
-              'primary',
-            ),
-          ]
+        ? [button('Return to investigation', () => stoprep(), 'back', 'quiet')]
         : [],
     );
     const call = transcript();
@@ -1522,6 +1515,33 @@
     invalidate();
     return result;
   };
+  // Location memory. The original save format has no position: loading always
+  // starts the current hour at a fixed spot. We note the exact location beside
+  // each save (keyed by a fingerprint of the save data, so it only applies to
+  // that exact save) and, on load, arrive there instead without replaying any
+  // story scene. Saves stay byte-identical and compatible with the PC game.
+  const fingerprint = (data) => {
+    let hash = 2166136261;
+    for (let i = 0; i < data.length; i++)
+      hash = Math.imul(hash ^ data.charCodeAt(i), 16777619);
+    return (hash >>> 0).toString(36) + ':' + data.length;
+  };
+  let resumeScene = null,
+    loadingSlot = null,
+    placeSettled = true;
+  const oldLoader = loader;
+  loader = function (slot) {
+    loadingSlot = slot;
+    try {
+      return oldLoader.apply(this, arguments);
+    } finally {
+      loadingSlot = null;
+    }
+  };
+  const currentScene = () =>
+    placeSettled && started === 0 && !recalled && options >= 0
+      ? locList[options]
+      : null;
   const oldSaver = saver;
   saver = function (slot) {
     const result = oldSaver(slot);
@@ -1531,9 +1551,67 @@
         time: timenow,
         progress: progper,
         updated: Date.now(),
+        scene: slot === 'reset' ? null : currentScene(),
+        save: fingerprint(localStorage[slot]),
       });
     invalidate();
     return result;
+  };
+  const oldLoad = loadstuff;
+  loadstuff = function (data) {
+    resumeScene = null;
+    placeSettled = false;
+    if (resetting !== 1 && typeof data === 'string') {
+      const print = fingerprint(data);
+      // The slot being loaded wins; another slot only counts if its data matches.
+      const slots = ['game', 'Save1', 'Save2'];
+      if (slots.includes(loadingSlot))
+        slots.unshift(...slots.splice(slots.indexOf(loadingSlot), 1));
+      for (const slot of slots) {
+        try {
+          const info = JSON.parse(
+            localStorage['mobile.saveInfo.' + slot] || 'null',
+          );
+          if (info && info.scene && info.save === print) {
+            resumeScene = info.scene;
+            break;
+          }
+        } catch {}
+      }
+    }
+    return oldLoad.apply(this, arguments);
+  };
+  const oldMove = moveloc;
+  moveloc = function (index) {
+    const target = resumeScene;
+    resumeScene = null;
+    const at = target === null ? -1 : locList.indexOf(target);
+    // Only intercept the load's own "start of the hour" move.
+    if (
+      at < 0 ||
+      at % 33 !== 0 ||
+      index !== 0 ||
+      arrowops[0] !== timeStarts[timenow - 5]
+    ) {
+      try {
+        return oldMove.apply(this, arguments);
+      } finally {
+        placeSettled = true;
+      }
+    }
+    // Borrow scene slot 0 for one synchronous call: a scene with no comment,
+    // event or music cue whose clip is the location's own idle loop.
+    const loop = locList[at + 3 + locList[at + 2]];
+    const borrowed = sceneList.slice(0, 11);
+    const visit = ['MOBILE RESUME', 0, loop, target, '', '', 1, '', 0, 0, ''];
+    for (let i = 0; i < 11; i++) sceneList[i] = visit[i];
+    arrowops[0] = 'MOBILE RESUME';
+    try {
+      return oldMove.call(this, 0);
+    } finally {
+      for (let i = 0; i < 11; i++) sceneList[i] = borrowed[i];
+      placeSettled = true;
+    }
   };
   guideon = function () {
     tipon = 0;

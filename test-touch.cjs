@@ -145,6 +145,11 @@ const server = http.createServer((req, res) => {
       console.log(JSON.stringify(report));
     } else {
       await runModernTests(page);
+      await runLocationMemoryTests(
+        browser,
+        `http://127.0.0.1:${server.address().port}/`,
+        errors,
+      );
     }
     assert.deepEqual(errors, [], 'No uncaught page errors');
   } finally {
@@ -669,4 +674,123 @@ async function runModernTests(page) {
     }
   }
   pass('Dialogue captions keep speaker sides inside the visible picture');
+}
+
+async function runLocationMemoryTests(browser, url, errors) {
+  const context = await browser.newContext({
+    viewport: { width: 832, height: 384 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await context.newPage();
+  page.on('pageerror', (error) => errors.push(error.message));
+  const ready = async () => {
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(
+      () => typeof mobileUI === 'object' && vplayer.readyState >= 2,
+    );
+    await page.locator('#ui-home').waitFor({ state: 'visible' });
+  };
+  const settled = () =>
+    page.waitForFunction(
+      () =>
+        started === 0 &&
+        abled === 1 &&
+        locon === 0 &&
+        !!document.querySelector('#scene-routes button'),
+      null,
+      { timeout: 60000 },
+    );
+  const where = () =>
+    page.evaluate(() => ({
+      scene: locList[options],
+      place: document.getElementById('scene-place').textContent,
+    }));
+  await ready();
+  await page.locator('#begin-investigation').tap();
+  await page.getByRole('button', { name: 'Skip prologue', exact: true }).tap();
+  await settled();
+  const start = await where();
+  // Walk somewhere other than the hour's starting spot.
+  await page
+    .locator('#scene-routes button')
+    .filter({ hasText: 'North Lane' })
+    .tap();
+  await page.waitForFunction(
+    (scene) => locList[options] !== scene,
+    start.scene,
+  );
+  await settled();
+  const away = await where();
+  assert.notEqual(away.scene, start.scene);
+  // Backgrounding writes the autosave that "Continue" uses after a restart.
+  await page.evaluate(() => mobileSuspend());
+  const autosave = await page.evaluate(() => localStorage.game);
+  await page.evaluate(() => saver('Save1'));
+  // Relaunch: "Continue investigation" returns to the same spot.
+  await ready();
+  await page.locator('#begin-investigation').tap();
+  await settled();
+  assert.deepEqual(await where(), away);
+  assert.equal(await page.evaluate(() => localStorage.game), autosave);
+  // Loading a case file also returns to where it was saved.
+  await page
+    .locator('#scene-tools')
+    .getByRole('button', { name: 'Pause', exact: true })
+    .tap();
+  await page.getByRole('button', { name: 'Case files', exact: true }).tap();
+  await page.locator('[data-load="1"]').tap();
+  await page
+    .locator('#ui-dialog')
+    .getByRole('button', { name: 'Load', exact: true })
+    .tap();
+  await page.waitForFunction(() => locon === 1 || abled === 0);
+  await settled();
+  assert.deepEqual(await where(), away);
+  // A save without a matching location note keeps the original behaviour.
+  await page.evaluate(() => {
+    for (const slot of ['game', 'Save1', 'Save2']) {
+      const key = 'mobile.saveInfo.' + slot;
+      if (!localStorage[key]) continue;
+      const info = JSON.parse(localStorage[key]);
+      info.save = 'stale';
+      localStorage[key] = JSON.stringify(info);
+    }
+  });
+  await page
+    .locator('#scene-tools')
+    .getByRole('button', { name: 'Pause', exact: true })
+    .tap();
+  await page.getByRole('button', { name: 'Case files', exact: true }).tap();
+  await page.locator('[data-load="1"]').tap();
+  await page
+    .locator('#ui-dialog')
+    .getByRole('button', { name: 'Load', exact: true })
+    .tap();
+  await page.waitForFunction(() => locon === 1 || abled === 0);
+  await settled();
+  assert.equal((await where()).place, start.place);
+  // Replayed events: the return button stays top-left, clear of captions.
+  await page.evaluate(() => {
+    recalled = 2;
+    mobileUI.invalidate();
+  });
+  const back = page.getByRole('button', {
+    name: 'Return to investigation',
+    exact: true,
+  });
+  await back.waitFor();
+  const box = await back.boundingBox();
+  const captionTop = await page.evaluate(() => innerHeight * 0.75);
+  assert.ok(box.y + box.height < 80 && box.x < 120, JSON.stringify(box));
+  assert.ok(box.y + box.height < captionTop);
+  await page.evaluate(() => {
+    recalled = 0;
+    mobileUI.invalidate();
+  });
+  await context.close();
+  console.log(
+    'PASS: ' +
+      'Continue and Load return to the saved location; unmatched saves use the original hour start',
+  );
 }
