@@ -613,4 +613,60 @@ async function runModernTests(page) {
     true,
   );
   pass('Long-press context menus remain suppressed');
+  // Speaker-side cues (align:left/right) must sit inside the 16:9 picture, not
+  // against the edges of a wider phone screen.
+  for (const [time, side, prefix] of [
+    [345.5, 'right', 'I really'],
+    [348.5, 'left', 'It IS'],
+    [344, 'center', "[Rebecca's voice]"],
+  ]) {
+    await page.evaluate((t) => {
+      vplayer.textTracks[0].mode = 'showing';
+      vplayer.pause();
+      vplayer.currentTime = t;
+    }, time);
+    await page.waitForFunction(
+      (p) =>
+        document
+          .querySelector('#caption-layer .caption-cue')
+          ?.textContent.startsWith(p),
+      prefix,
+    );
+    const box = await page.evaluate(() => {
+      const cue = document.querySelector('#caption-layer .caption-cue');
+      const r = cue.getBoundingClientRect();
+      const width = Math.min(innerWidth, (innerHeight * 16) / 9);
+      const left = (innerWidth - width) / 2;
+      return {
+        left: r.left,
+        right: r.right,
+        bottom: r.bottom,
+        picLeft: left,
+        picRight: left + width,
+        align: cue.style.textAlign,
+        height: innerHeight,
+      };
+    });
+    assert.equal(box.align, side);
+    assert.ok(box.left >= box.picLeft + 8, JSON.stringify(box));
+    assert.ok(box.right <= box.picRight - 8, JSON.stringify(box));
+    assert.ok(box.bottom <= box.height - 8, JSON.stringify(box));
+    if (side !== 'center') {
+      await page.evaluate(
+        () => (
+          (document.getElementById('game-ui').style.visibility = 'hidden'),
+          (mainview.dataset.o = mainview.style.opacity),
+          (mainview.style.opacity = '1')
+        ),
+      );
+      await screenshot('caption-' + side);
+      await page.evaluate(
+        () => (
+          (document.getElementById('game-ui').style.visibility = ''),
+          (mainview.style.opacity = mainview.dataset.o)
+        ),
+      );
+    }
+  }
+  pass('Dialogue captions keep speaker sides inside the visible picture');
 }

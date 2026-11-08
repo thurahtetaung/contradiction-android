@@ -129,12 +129,39 @@ body {
 .fill-film #vplayer {
   object-fit: cover;
 }
-#vplayer::cue {
-  font-family: Arial, sans-serif;
-  font-size: 18px;
-  color: #fff;
-  background: #0c0c0cbb;
+/* Native cue rendering is replaced by #caption-layer (see game-ui.js). */
+#vplayer::-webkit-media-text-track-container {
+  display: none !important;
 }
+#vplayer::cue {
+  color: transparent;
+  background: transparent;
+}
+.caption-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  height: 0;
+  pointer-events: none;
+}
+.caption-cue {
+  position: absolute;
+  bottom: 0;
+  font-family: Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+}
+.caption-cue > span {
+  background: #000a;
+  padding: 2px 7px;
+  border-radius: 3px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
 #credits {
   font-size: 22px !important;
   background: #000 !important;

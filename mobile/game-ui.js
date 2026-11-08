@@ -27,6 +27,21 @@
     if (value !== undefined) node.textContent = value;
     return node;
   };
+  // Skip DOM writes that would not change anything: each write is a mutation
+  // record and can force style/layout work even when the value is identical.
+  const setHidden = (id, value) => {
+    const node = $(id);
+    if (node.hidden !== !!value) node.hidden = !!value;
+  };
+  const setText = (id, value) => {
+    const node = $(id);
+    if (node.textContent !== value) node.textContent = value;
+  };
+  const setPressed = (node, on) => {
+    const value = on ? 'true' : 'false';
+    if (node && node.getAttribute('aria-pressed') !== value)
+      node.setAttribute('aria-pressed', value);
+  };
   const paths = {
     back: 'M15 5l-7 7 7 7',
     close: 'M6 6l12 12M18 6L6 18',
@@ -118,6 +133,7 @@
     vplayer.textTracks[0].mode = subon ? 'showing' : 'hidden';
     localStorage.mobileCaptions = String(subon);
     notify(subon ? 'Captions on' : 'Captions off');
+    renderCaptions();
     document
       .querySelectorAll('#game-ui [aria-label="Captions"]')
       .forEach((node) =>
@@ -128,11 +144,95 @@
     subon = 1;
     vplayer.textTracks[0].mode = 'showing';
   }
-  const framing = () =>
+  // The browser lays cues out against the full-screen <video> element, which is
+  // wider than the 16:9 picture on phones, so speaker-side (left/right) cues end
+  // up in the letterbox. Draw them ourselves inside the visible picture instead.
+  const captionLayer = el('div', 'caption-layer');
+  captionLayer.id = 'caption-layer';
+  captionLayer.setAttribute('aria-live', 'polite');
+  $('vidbox').appendChild(captionLayer);
+  function pictureRect() {
+    const fill = localStorage.mobileFraming === 'fill';
+    const width = fill
+        ? Math.max(innerWidth, (innerHeight * 16) / 9)
+        : Math.min(innerWidth, (innerHeight * 16) / 9),
+      height = (width * 9) / 16;
+    const left = Math.max(0, (innerWidth - width) / 2),
+      top = Math.max(0, (innerHeight - height) / 2);
+    return {
+      left,
+      top,
+      width: Math.min(innerWidth, width),
+      height: Math.min(innerHeight, height),
+    };
+  }
+  function renderCaptions() {
+    const track = vplayer.textTracks[0];
+    const cues =
+      track && track.mode === 'showing' ? [...(track.activeCues || [])] : [];
+    if (!cues.length) {
+      captionLayer.replaceChildren();
+      return;
+    }
+    const pic = pictureRect();
+    const css = getComputedStyle(document.documentElement);
+    const safeLeft =
+        parseFloat(css.getPropertyValue('--android-safe-left')) || 0,
+      safeRight = parseFloat(css.getPropertyValue('--android-safe-right')) || 0;
+    const inset = Math.max(16, pic.width * 0.04);
+    const minX = Math.max(pic.left + inset, safeLeft + 16),
+      maxX = Math.min(
+        pic.left + pic.width - inset,
+        innerWidth - safeRight - 16,
+      );
+    captionLayer.style.bottom =
+      Math.max(14, innerHeight - (pic.top + pic.height) + pic.height * 0.05) +
+      'px';
+    captionLayer.replaceChildren(
+      ...cues.map((cue) => {
+        const box = el('div', 'caption-cue');
+        const size = Math.min(
+          maxX - minX,
+          Math.max(260, (pic.width * (cue.size || 50)) / 100),
+        );
+        const align =
+          cue.align === 'left' || cue.align === 'start'
+            ? 'left'
+            : cue.align === 'right' || cue.align === 'end'
+              ? 'right'
+              : 'center';
+        const x =
+          align === 'left'
+            ? minX
+            : align === 'right'
+              ? maxX - size
+              : (minX + maxX - size) / 2;
+        box.style.left = x + 'px';
+        box.style.width = size + 'px';
+        box.style.textAlign = align;
+        cue.text.split(/\n/).forEach((line, index) => {
+          if (index) box.appendChild(el('br'));
+          box.appendChild(
+            el(
+              'span',
+              '',
+              line.replace(/<[^>]+>/g, '').replace(/\s{2,}/g, ' '),
+            ),
+          );
+        });
+        return box;
+      }),
+    );
+  }
+  vplayer.textTracks[0]?.addEventListener('cuechange', renderCaptions);
+  addEventListener('resize', renderCaptions);
+  const framing = () => {
     document.documentElement.classList.toggle(
       'fill-film',
       localStorage.mobileFraming === 'fill',
     );
+    renderCaptions();
+  };
   framing();
   $('scene-tools').append(
     button(
@@ -1141,9 +1241,9 @@
   function render() {
     root.classList.toggle('playing-prologue', !!prologue);
     if (prologue) {
-      $('ui-home').hidden = true;
-      $('ui-panel').hidden = true;
-      $('ui-loading').hidden = true;
+      setHidden('ui-home', true);
+      setHidden('ui-panel', true);
+      setHidden('ui-loading', true);
       return;
     }
     if (tipon) {
@@ -1153,7 +1253,7 @@
     }
     const ready =
       vplayer.readyState >= 2 && started !== 1 && (readyOnce || abled === 1);
-    $('ui-loading').hidden = ready;
+    setHidden('ui-loading', ready);
     if (ready && !readyOnce) {
       readyOnce = true;
       open('home');
@@ -1176,22 +1276,23 @@
       returnPane = '';
       signatures.clear();
     }
-    $('ui-panel').hidden =
-      !pane || pane === 'home' || (pane === 'interview' && abled === 0);
-    $('ui-home').hidden = pane !== 'home' || !ready;
+    setHidden(
+      'ui-panel',
+      !pane || pane === 'home' || (pane === 'interview' && abled === 0),
+    );
+    setHidden('ui-home', pane !== 'home' || !ready);
     root.classList.toggle('in-film', !usable() || !!recalled || thend > 0);
     root.classList.toggle(
       'has-panel',
       !$('ui-panel').hidden || !$('ui-home').hidden,
     );
     root.classList.toggle('interviewing', pane === 'interview');
-    $('scene-time').textContent =
-      text($('thetime').textContent) || 'FRIDAY · EDENTON';
-    $('scene-place').textContent =
-      text($('place').textContent) || 'The investigation';
-    $('scene-tools')
-      .querySelector('[aria-label="Captions"]')
-      .setAttribute('aria-pressed', subon ? 'true' : 'false');
+    setText('scene-time', text($('thetime').textContent) || 'FRIDAY · EDENTON');
+    setText('scene-place', text($('place').textContent) || 'The investigation');
+    setPressed(
+      $('scene-tools').querySelector('[aria-label="Captions"]'),
+      subon,
+    );
     if (pane === 'home') renderHome();
     else if (pane) renderPanel();
     update(
@@ -1333,7 +1434,7 @@
         return [search];
       },
     );
-    $('replay-tools').hidden = recalled !== 2;
+    setHidden('replay-tools', recalled !== 2);
     update('replay-tools', recalled === 2 ? 'replay' : '', () =>
       recalled === 2
         ? [
@@ -1371,7 +1472,11 @@
       render();
     });
   }
-  const observer = new MutationObserver(invalidate);
+  // Our own caption overlay lives inside #wrap; its updates never need a re-render.
+  const observer = new MutationObserver((records) => {
+    if (records.some((record) => !captionLayer.contains(record.target)))
+      invalidate();
+  });
   observer.observe($('wrap'), {
     subtree: true,
     childList: true,
