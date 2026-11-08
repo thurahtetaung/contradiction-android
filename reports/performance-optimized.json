@@ -1,0 +1,9 @@
+{
+  "fixture": "Idle menu with original video playing in desktop headless Chromium; 3-second sample; not a phone power measurement",
+  "animationFrames": 0,
+  "menuPolls": 0,
+  "filter": "none",
+  "videoWidth": 1280,
+  "videoHeight": 720,
+  "taskMilliseconds": 162.6
+}

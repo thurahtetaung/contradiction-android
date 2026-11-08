@@ -1,0 +1,80 @@
+Contradiction Android prototype v0.7
+
+Includes the original game's detective launcher icon, extracted from nw.exe.
+
+The app launches in landscape and rotates between both landscape sides.
+Portrait orientation is disabled.
+
+Requires Android 8.0 or later. Import needs about 2.4 GB additional free space
+while the source video is still in Downloads. After import, the source copy
+can be deleted, leaving approximately 2.5 GB used by the installed game.
+
+1. Transfer dist/Contradiction-Android-prototype.apk to your Android device.
+2. Install the APK. If Android asks, allow your file manager to install this app.
+3. Copy the original Windows/gfx/MCMV.mp4 to the phone's Downloads folder.
+   The file must be 2,374,166,828 bytes. No conversion is needed.
+4. Open Contradiction Prototype and tap Import MCMV.mp4. Choose the local file.
+   Wait for Import complete. The video is copied into private app storage.
+   You can now delete the Downloads copy; the game no longer depends on it.
+   Existing external-video selections are imported automatically on upgrade.
+5. Wait for the opening logo and menu, then dismiss the prototype help message
+   and tap Start Game directly. Initial loading can take tens of seconds.
+
+CONTROLS
+Tap menu tabs and options directly. Save, Load and Reset each have explicit
+confirmation and Cancel buttons. Load buttons are disabled for empty slots.
+Tap scene arrows to move, inventory pictures to select items, and suspect
+replies to add them to the contradiction box. Tap a question prompt to ask.
+Long menus scroll vertically. The bottom controller remains available for
+contextual actions, map navigation, replay and other desktop interactions.
+
+Fallback controller:
+Arrows: move / navigate menus.
+Enter: select / items / ask a question.
+A: menu / back / confirm some save and load prompts.
+S: search / use item.
+D: map / replay an answer.
+CC: captions. ?: contextual controls guide.
+Actions depend on context, as in the desktop game.
+Android Back: Resume, Import video again, or Save and exit.
+
+SAVES
+The original game's local save system is used. Save Game 1 and Save Game 2
+are available in the Game menu. Backgrounding the app creates a resume save.
+The original game resumes from its stored progress and chapter location;
+it does not restore the precise video frame. Uninstalling or clearing app
+data removes saves and the imported video. Steam achievements/cloud saves
+are unavailable. Updating the APK preserves the imported video and saves.
+
+TESTED
+Debug APK build and Android lint passed.
+Android API 36.1 emulator: original video decoding, touch Start Game,
+caption toggle, video reads beyond 2 GiB compared against original bytes,
+seek to 11,000 seconds, manual save, background pause/save, and load.
+Import checks: insufficient-space screen, full video import with matching
+SHA-256 checksum, and playback after moving the source file and restarting.
+Touch checks in headless Chromium using touch events: save/cancel/load/reset
+flows, keyboard fallback, scene directions and busy state, inventory picks,
+suspect reply picks, scrolling long lists, and persisted save slots.
+Native WebView long-press menus, text selection, and overscroll are suppressed.
+Version 0.7 also tests animation settling, idle scheduling, and colour controls.
+S25+ short foreground samples: hardware Qualcomm AVC decoder, original
+720p/24fps video with no dropped frames in either measured build. Idle
+animation callbacks fell from about 1200 to 2 in matched ten-second samples.
+These are work counters, not a measured battery or temperature improvement;
+the phone was charging over USB, and total JavaScript task time was noisy.
+No physical phone or full playthrough has been tested.
+
+The app plays its imported copy offline. Its video transport runs only on the
+phone's loopback address, with a random port and per-launch URL token.
+The default APK is a release build with WebView debugging disabled. Media
+is unchanged. Inventory animation stops when stationary; menu updates are
+event-driven; neutral colour settings skip an unnecessary GPU filter.
+
+BUILD
+Run powershell -ExecutionPolicy Bypass -File .\build.ps1 from this folder.
+Uses the Android Studio JDK, Android SDK platform 36, and Gradle 8.14 wrapper.
+Build with -Variant Debug to enable WebView profiling.
+prepare.cjs copies the original assets except the video, adapts
+the HTML, and adds the mobile platform and touch controller scripts.
+The original Windows files are unchanged.

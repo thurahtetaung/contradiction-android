@@ -1,0 +1,17 @@
+.gradle/
+build/
+app/build/
+app/src/main/assets/
+local.properties
+*.log
+*.img
+*.qcow2
+*.tmp.*
+*.jks
+*.keystore
+icon-reference/
+analysis/
+node_modules/
+.idea/
+.DS_Store
+dist/

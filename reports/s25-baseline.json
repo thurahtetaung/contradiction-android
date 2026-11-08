@@ -1,0 +1,25 @@
+{
+  "counts": {
+    "animationFrames": 1202,
+    "menuAttributeWrites": 0
+  },
+  "filter": "saturate(1) contrast(1)",
+  "video": {
+    "width": 1280,
+    "height": 720,
+    "paused": false,
+    "frames": 850,
+    "dropped": 0
+  },
+  "state": {
+    "started": 2,
+    "toolson": 1,
+    "baron": 0
+  },
+  "appVersion": "0.6",
+  "seconds": 10,
+  "jsTaskMilliseconds": 453,
+  "videoFramesDuringSample": 241,
+  "droppedFramesDuringSample": 0,
+  "limitations": "Single short S25+ sample while USB charging; CPU work counters are not energy or temperature measurements."
+}

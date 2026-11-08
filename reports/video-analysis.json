@@ -1,0 +1,17 @@
+{
+  "original": {
+    "bytes": 2374166828,
+    "durationSeconds": 11651.008,
+    "video": { "codec": "H.264 High", "width": 1280, "height": 720, "framesPerSecond": 24, "frameCount": 279624 },
+    "audio": { "codec": "AAC-LC", "channels": 2, "sampleRate": 48000 }
+  },
+  "streamCopyMp4Remux": {
+    "bytes": 2376192652,
+    "changeBytes": 2025824,
+    "videoAndAudioPacketHashesMatch": true,
+    "videoSha256": "5c758ff0962ee0c3749c15eb0196b13a7839bf1d4cc404b9acdd14bb87a2b587",
+    "audioSha256": "462dcb1b9873d368bda68fef012b09297acc7513550d9d93aabc82337891a580",
+    "command": "ffmpeg -i MCMV.mp4 -map 0 -c copy -movflags +faststart MCMV-remux-test.mp4"
+  },
+  "decision": "Keep the original. The lossless stream-copy experiment increased size; no video or audio re-encoding is applied."
+}

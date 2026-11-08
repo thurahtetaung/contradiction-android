@@ -1,0 +1,24 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'local.contradiction.android'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'local.contradiction.android'
+        minSdk 26
+        targetSdk 35
+        versionCode 7
+        versionName '0.7-prototype'
+    }
+    buildFeatures { buildConfig = true }
+    buildTypes {
+        release {
+            // Preserve update compatibility with this prototype's existing installs.
+            // The local signing key remains outside the repository.
+            signingConfig signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+        }
+    }
+    androidResources { noCompress += [''] }
+}

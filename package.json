@@ -1,0 +1,12 @@
+{
+  "name": "contradiction-android",
+  "version": "0.7.0",
+  "private": true,
+  "description": "Android WebView port adapter for a locally supplied Contradiction PC copy",
+  "scripts": {
+    "prepare:assets": "node prepare.cjs",
+    "test": "node prepare.cjs && node test-touch.cjs"
+  },
+  "devDependencies": { "playwright-core": "1.56.1" },
+  "engines": { "node": ">=22" }
+}
