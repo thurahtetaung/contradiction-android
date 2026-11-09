@@ -51,7 +51,13 @@ html = html.replace(
 );
 html = html.replace(
   '</body>',
-  '<script src="lifecycle.js"></script><script src="performance.js"></script><script src="game-ui.js"></script></body>',
+  '<script src="lifecycle.js"></script><script src="performance.js"></script><script src="chief-timings.js"></script><script src="game-ui.js"></script></body>',
+);
+fs.writeFileSync(
+  path.join(dest, 'chief-timings.js'),
+  'window.mobileChiefTimings=' +
+    fs.readFileSync(path.join(__dirname, 'mobile/chief-timings.json'), 'utf8') +
+    ';',
 );
 fs.writeFileSync(path.join(dest, 'index.html'), html);
 for (const name of [

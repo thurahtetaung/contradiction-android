@@ -13,6 +13,7 @@
   fit();
   const reasons = new Set(),
     playing = new Set();
+  window.mobileForgetMedia = (media) => playing.delete(media);
   window.mobilePause = (reason) => {
     if (reasons.has(reason)) return;
     if (!reasons.size) {

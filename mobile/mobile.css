@@ -1314,3 +1314,159 @@ h3 {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
+
+.dialog-card p,
+.transcript {
+  white-space: pre-line;
+}
+.chief-caption {
+  position: absolute;
+  z-index: 25;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  text-align: center;
+  font:
+    17px/1.45 Arial,
+    sans-serif;
+  color: #f3ead6;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+}
+.chief-caption[hidden],
+.deduction-reveal[hidden] {
+  display: none;
+}
+.chief-speaker {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 3px;
+  padding: 2px 8px;
+  background: #07100ee6;
+  color: #dfbd80;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+}
+.chief-words {
+  background: #000c;
+  padding: 3px 8px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.deduction-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 30px max(36px, var(--android-safe-left, 0px));
+  background: radial-gradient(ellipse at center, #353222f5, #08120ff5 75%);
+  pointer-events: none;
+}
+.deduction-reveal > .eyebrow {
+  color: #dfbd80;
+  animation: deduction-title 0.5s ease both;
+}
+.deduction-statements {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  width: min(800px, 95%);
+}
+.deduction-statements blockquote {
+  flex: 1;
+  margin: 0;
+  padding: 16px 20px;
+  font:
+    20px/1.35 Georgia,
+    serif;
+  color: #f4ecd9;
+  border-block: 1px solid #cba66366;
+  background: linear-gradient(90deg, transparent, #cba66312);
+  animation: deduction-left 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.deduction-statements blockquote:last-child {
+  animation-name: deduction-right;
+}
+.deduction-link {
+  color: #e2bc76;
+  font:
+    42px Georgia,
+    serif;
+  animation: deduction-title 0.4s 0.35s both;
+}
+.deduction-reveal h2 {
+  font:
+    36px Georgia,
+    serif;
+  margin: 0;
+  color: #efcf91;
+  text-align: center;
+  animation: deduction-title 0.6s 0.55s both;
+}
+.deduction-rule {
+  height: 1px;
+  width: min(480px, 65%);
+  background: linear-gradient(90deg, transparent, #f4d390, transparent);
+  animation: deduction-rule 0.7s 0.55s both;
+}
+@keyframes deduction-left {
+  from {
+    opacity: 0;
+    transform: translateX(-44px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes deduction-right {
+  from {
+    opacity: 0;
+    transform: translateX(44px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes deduction-title {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes deduction-rule {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@media (max-height: 350px) {
+  .deduction-reveal {
+    gap: 10px;
+    padding-block: 16px;
+  }
+  .deduction-statements blockquote {
+    font-size: 17px;
+    padding: 12px;
+  }
+  .deduction-reveal h2 {
+    font-size: 28px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deduction-reveal * {
+    animation: none !important;
+  }
+}

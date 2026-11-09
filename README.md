@@ -51,3 +51,5 @@ Short samples measure work counters, not battery capacity or heat reduction. The
 ## Video size
 
 The original video is already compressed. A stream-copy MP4 remux preserved the compressed video/audio hashes but increased the file size, so the app retains the original. This experiment found no useful lossless size reduction. A smaller modern-codec transcode cannot be promised to preserve every decoded pixel and audio sample; no lossy transcode is applied.
+
+Version 0.10 preserves HTML text boundaries, adds a brief statement-pair reveal for solved contradictions, and captions the original phone audio while retaining casebook transcripts. Leaving a replay stops its audio. See reports/call-caption-validation.md for timing and regression details.

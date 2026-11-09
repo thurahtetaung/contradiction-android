@@ -19,7 +19,12 @@
   const text = (value) => {
     const node = document.createElement('div');
     node.innerHTML = String(value ?? '');
-    return node.textContent.trim();
+    node.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+    node.querySelectorAll('p,div,tr,li').forEach((block) => block.append('\n'));
+    return node.textContent
+      .replace(/[\t ]+/g, ' ')
+      .replace(/ *\n */g, '\n')
+      .trim();
   };
   const el = (tag, cls, value) => {
     const node = document.createElement(tag);
@@ -295,6 +300,115 @@
     placeSpoken();
   });
   addEventListener('resize', renderCaptions);
+  // Audio-clock captions for the original phone recordings. Timings are
+  // prepared offline; wording and speaker labels come from the original HTML.
+  const chiefCaption = el('div', 'chief-caption');
+  chiefCaption.id = 'chief-caption';
+  chiefCaption.hidden = true;
+  chiefCaption.setAttribute('aria-live', 'polite');
+  root.appendChild(chiefCaption);
+  const chiefTurns = new Map();
+  function callTurns(id) {
+    if (!chiefTurns.has(id)) {
+      const lines = text($('ch' + id)?.innerHTML || '')
+        .replace(/\([^)]*\)/g, '')
+        .split('\n')
+        .filter((line) => line.trim());
+      chiefTurns.set(
+        id,
+        lines.map((line) => {
+          const match = /^([A-Z]+):\s*(.*)$/.exec(line.trim());
+          return {
+            speaker: match?.[1] || '',
+            words: (match?.[2] || line).trim().split(/\s+/),
+          };
+        }),
+      );
+    }
+    return chiefTurns.get(id);
+  }
+  let chiefCueKey = '';
+  function renderChiefCaption() {
+    const match = /\/C(\d+)\.mp3$/i.exec(acom.src);
+    const id = match ? Number(match[1]) : 0;
+    const cue =
+      !acom.paused &&
+      !acom.ended &&
+      (window.mobileChiefTimings?.[id] || []).find(
+        ([start, end]) => acom.currentTime >= start && acom.currentTime < end,
+      );
+    const key = cue ? id + '|' + cue.join('|') : '';
+    chiefCaption.hidden = !cue || !!pane || !!prologue;
+    if (key !== chiefCueKey) {
+      chiefCueKey = key;
+      chiefCaption.replaceChildren();
+      if (cue) {
+        const turn = callTurns(id)[cue[2]];
+        chiefCaption.append(
+          el('span', 'chief-speaker', turn.speaker),
+          el(
+            'span',
+            'chief-words',
+            turn.words.slice(cue[3], cue[3] + cue[4]).join(' '),
+          ),
+        );
+      }
+    }
+    const pic = pictureRect();
+    chiefCaption.style.bottom =
+      Math.max(16, innerHeight - pic.top - pic.height + pic.height * 0.06) +
+      'px';
+    chiefCaption.style.maxWidth =
+      Math.min(pic.width * 0.82, innerWidth - 100) + 'px';
+  }
+  for (const event of [
+    'timeupdate',
+    'playing',
+    'pause',
+    'ended',
+    'emptied',
+    'seeked',
+    'loadedmetadata',
+  ])
+    acom.addEventListener(event, renderChiefCaption);
+  addEventListener('resize', renderChiefCaption);
+
+  // Only a newly solved engine trap earns the reveal. Replays and an incorrect
+  // comparison cannot produce a success effect or change story progression.
+  const deductionReveal = el('section', 'deduction-reveal');
+  deductionReveal.id = 'deduction-reveal';
+  deductionReveal.hidden = true;
+  deductionReveal.setAttribute('role', 'status');
+  root.appendChild(deductionReveal);
+  const originalPair = window.pairit;
+  window.pairit = function (...args) {
+    const before = Array.from({ length: tl }, (_, i) => traps[30 * i + 4]);
+    const first = text($('conAt').innerHTML);
+    const result = originalPair.apply(this, args);
+    const solved = before.findIndex(
+      (flag, i) => !flag && traps[30 * i + 4] === 1,
+    );
+    if (solved >= 0) {
+      const statements = el('div', 'deduction-statements');
+      statements.append(
+        el('blockquote', '', first),
+        el('span', 'deduction-link', '≠'),
+        el('blockquote', '', text($('conBt').innerHTML)),
+      );
+      deductionReveal.replaceChildren(
+        el('span', 'eyebrow', names[curchar - 2] + ' · STATEMENTS IN CONFLICT'),
+        statements,
+        el('h2', '', 'Contradiction uncovered'),
+        el('div', 'deduction-rule'),
+      );
+      deductionReveal.hidden = false;
+      // Reinserted children start the finite CSS animation; no idle animation loop.
+      later(() => {
+        deductionReveal.hidden = true;
+      }, 3400);
+    }
+    return result;
+  };
   const framing = () => {
     document.documentElement.classList.toggle(
       'fill-film',
@@ -318,6 +432,7 @@
     button('Pause', () => open('home'), 'pause', 'icon-only'),
   );
   function open(next) {
+    if (ownTranscript && next !== 'call') stopChiefReplay();
     if (['home', 'settings', 'saves', 'credits', 'help'].includes(next))
       mobilePause('menu');
     if (['inventory', 'map', 'journal'].includes(next) && !usable()) return;
@@ -340,7 +455,7 @@
       return;
     }
     if (pane === 'call' && ownTranscript) {
-      ownTranscript = '';
+      stopChiefReplay();
       pane = 'journal';
       tab = 'chief';
       signatures.clear();
@@ -370,6 +485,18 @@
     modal = false;
     $('ui-dialog').hidden = true;
     $('ui-dialog').replaceChildren();
+  }
+  let replaySource = '';
+  function stopChiefReplay() {
+    if (replaySource && acom.src === replaySource) {
+      acom.pause();
+      acom.currentTime = 0;
+      mobileForgetMedia(acom);
+      tvol = fullvol;
+    }
+    replaySource = '';
+    ownTranscript = '';
+    renderChiefCaption();
   }
   function dialog(title, description, actions) {
     const host = $('ui-dialog');
@@ -661,7 +788,7 @@
             'muted',
             allowed
               ? 'Find out what ' + names[curchar - 2] + ' knows about this.'
-              : text($('repinfo').textContent) ||
+              : text($('repinfo').innerHTML) ||
                   'There is nothing to ask about this.',
           ),
         );
@@ -711,7 +838,7 @@
             el(
               'p',
               'muted',
-              text($('repinfo').textContent) ||
+              text($('repinfo').innerHTML) ||
                 'No statement has been recorded about this.',
             ),
           );
@@ -1029,7 +1156,7 @@
             nextip();
             dialog(
               'Notes on the investigation',
-              text($('greenovertext').textContent),
+              text($('greenovertext').innerHTML),
               [{ label: 'Back', icon: 'back' }],
             );
           },
@@ -1051,6 +1178,7 @@
                     tvol = dipvol;
                     acom.src = 'sound/C' + (clue + 1) + '.mp3';
                     const source = acom.src;
+                    replaySource = source;
                     acom.play();
                     acom.addEventListener(
                       'ended',
@@ -1060,7 +1188,7 @@
                       { once: true },
                     );
                     ownTranscript = text(
-                      $('ch' + (clue + 1))?.textContent || message,
+                      $('ch' + (clue + 1))?.innerHTML || message,
                     );
                     pane = 'call';
                   },
@@ -1197,15 +1325,8 @@
   }
   function transcript() {
     if (ownTranscript) return ownTranscript;
-    if (!subon) return '';
-    return [...document.querySelectorAll('#wrap > div')]
-      .filter(
-        (node) =>
-          /^ch\d+$/.test(node.id) &&
-          Number(getComputedStyle(node).opacity) > 0.5,
-      )
-      .map((node) => text(node.textContent))
-      .join('\n\n');
+    if (cluend > 0) return text($('ch' + cluenow)?.innerHTML || '');
+    return '';
   }
   function renderPanel() {
     let title = '',
@@ -1371,6 +1492,7 @@
     update('panel-body', pane + '|' + key, build);
   }
   function render() {
+    renderChiefCaption();
     root.classList.toggle('playing-prologue', !!prologue);
     if (prologue) {
       setHidden('ui-home', true);

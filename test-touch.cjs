@@ -469,6 +469,32 @@ async function runModernTests(page) {
     })
     .tap();
   assert((await page.locator('#ui-dialog p').textContent()).length > 20);
+  // Both screenshot regressions are HTML breaks which must remain boundaries.
+  await page.evaluate(() => {
+    window.savedNextip = nextip;
+    nextip = () =>
+      words(
+        'greenovertext',
+        'What they grow there?<br><br>You also haven\u2019t asked Rebecca.',
+      );
+  });
+  await page
+    .locator('#ui-dialog')
+    .getByRole('button', { name: 'Back', exact: true })
+    .tap();
+  await page
+    .getByRole('button', {
+      name: 'What should I investigate next?',
+      exact: true,
+    })
+    .tap();
+  assert.match(
+    await page.locator('#ui-dialog p').textContent(),
+    /there\?\s+You/,
+  );
+  await page.evaluate(() => {
+    nextip = savedNextip;
+  });
   await page
     .locator('#ui-dialog')
     .getByRole('button', { name: 'Back', exact: true })
@@ -513,6 +539,19 @@ async function runModernTests(page) {
       askedCalls++;
       return original();
     };
+  });
+  await page.evaluate(() => {
+    askabled = 0;
+    replies('It isn\u2019t worth asking Rebecca<br>about the silver key.');
+    mobileUI.invalidate();
+  });
+  await page.waitForFunction(() =>
+    /Rebecca\s+about/.test(document.querySelector('.item-detail').textContent),
+  );
+  await page.evaluate(() => {
+    iton = 99;
+    select(kate);
+    mobileUI.invalidate();
   });
   await page.getByRole('button', { name: 'Ask about this', exact: true }).tap();
   assert.equal(await page.evaluate(() => askedCalls), 1);
@@ -578,6 +617,15 @@ async function runModernTests(page) {
   await page.locator(`[data-reply="${deduction.indexes[1]}"]`).tap();
   assert.equal(await page.evaluate(() => traps[4]), 1);
   assert.equal(await page.evaluate(() => abled), 0);
+  await page.locator('#deduction-reveal').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#deduction-reveal blockquote').count(), 2);
+  assert.match(
+    await page.locator('#deduction-reveal h2').textContent(),
+    /Contradiction uncovered/,
+  );
+  await page.waitForTimeout(1200);
+  await screenshot('contradiction-reveal');
+  await page.locator('#deduction-reveal').waitFor({ state: 'hidden' });
   pass(
     'Cross-evidence statement comparison triggers the original valid contradiction',
   );
@@ -825,6 +873,83 @@ async function runLocationMemoryTests(browser, url, errors) {
   );
   console.log(
     'PASS: Jenks’s spoken thoughts show as captions regardless of CC and clear when he finishes',
+  );
+  // Calls use their audio clock even with CC off. Transcripts remain readable,
+  // and leaving a replay must stop only the replay that this page owns.
+  await page.evaluate(async () => {
+    mobilePause('caption-test');
+    subon = 0;
+    acom.src = 'sound/C1.mp3';
+    await acom.play();
+    const cue = mobileChiefTimings[1][1];
+    acom.currentTime = (cue[0] + cue[1]) / 2;
+  });
+  await page.locator('#chief-caption').waitFor({ state: 'visible' });
+  await page.waitForFunction(
+    () => document.querySelector('.chief-speaker').textContent === 'JENKS',
+  );
+  const firstChiefCaption = await page.locator('.chief-words').textContent();
+  assert.ok(firstChiefCaption.length > 10);
+  if (process.argv.includes('--screenshots'))
+    await page.screenshot({
+      path: path.join(__dirname, 'analysis/screens/chief-caption.png'),
+    });
+  await page.evaluate(() => {
+    const cue = mobileChiefTimings[1].find((c) => c[2] === 2);
+    acom.currentTime = (cue[0] + cue[1]) / 2;
+  });
+  await page.waitForFunction(
+    () => document.querySelector('.chief-speaker').textContent === 'CHIEF',
+  );
+  assert.notEqual(
+    await page.locator('.chief-words').textContent(),
+    firstChiefCaption,
+  );
+  await page.evaluate(() => {
+    acom.pause();
+    mobileForgetMedia(acom);
+    mobileUnpause('caption-test');
+    window.oldChiefFlag = clues[0];
+    clues[0] = 2;
+    mobileUI.open('journal');
+  });
+  await page
+    .locator('#panel-tabs')
+    .getByRole('button', { name: 'Chief', exact: true })
+    .tap();
+  for (const nativeBack of [false, true]) {
+    await page.getByRole('button', { name: 'Chief call 1', exact: true }).tap();
+    await page
+      .locator('#ui-dialog')
+      .getByRole('button', { name: 'Listen', exact: true })
+      .tap();
+    await page.waitForFunction(() => mobileUI.pane === 'call' && !acom.paused);
+    assert.match(
+      await page.locator('.transcript').textContent(),
+      /CHIEF:\s+Hello\?/,
+    );
+    assert.match(await page.locator('.transcript').textContent(), /JENKS:/);
+    if (nativeBack) await page.evaluate(() => mobileBack());
+    else
+      await page
+        .locator('#panel-header')
+        .getByRole('button', { name: 'Back', exact: true })
+        .tap();
+    await page.waitForFunction(
+      () => mobileUI.pane === 'journal' && acom.paused,
+    );
+    await page.evaluate(() => {
+      mobileSuspend();
+      mobileResume();
+    });
+    assert.equal(await page.evaluate(() => acom.paused), true);
+  }
+  await page.evaluate(() => {
+    clues[0] = oldChiefFlag;
+    mobileUI.close();
+  });
+  console.log(
+    'PASS: Chief calls have audio-clock captions and preserved transcripts; both Back paths stop replay audio, including after background/resume',
   );
   // Walk somewhere other than the hour's starting spot.
   await page
