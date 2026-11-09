@@ -1582,9 +1582,10 @@
           : arrowops
               .map((route, index) => {
                 if (!route) return null;
-                const label =
-                  text($('opt_' + ['A', 'B', 'C', 'D'][index]).textContent) ||
-                  'Continue';
+                const base = options + 9 + 6 * index;
+                // Read the current location record directly. The desktop DOM
+                // labels update a second later and can still be blank/stale.
+                const label = text(locList[base + 5]);
                 const node = button(
                   label,
                   () => {
@@ -1594,7 +1595,6 @@
                   'route-marker',
                 );
                 node.dataset.route = index;
-                const base = options + 9 + 6 * index;
                 const art = el('img');
                 art.src = 'gfx/arrows/D' + (locList[base + 2] || 0) + '.png';
                 art.alt = '';

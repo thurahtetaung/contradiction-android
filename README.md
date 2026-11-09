@@ -57,3 +57,5 @@ Version 0.10 preserves HTML text boundaries, adds a brief statement-pair reveal 
 Version 0.11 uses Save for every manual slot. Restoring a matching saved location enables controls after its idle frame is decoded, rather than waiting for the idle clip to finish. Story scenes and older saves without location metadata keep their existing playback timing.
 
 Version 0.12 waits for a presented video frame and the location fade-in before unlocking the restored HUD. The load notice appears at that same point; the original fixed 4.5-second notice is removed during asset preparation.
+
+Version 0.13 reads route labels directly from the current location record, so loading cannot cache blank or stale labels from the delayed desktop UI.

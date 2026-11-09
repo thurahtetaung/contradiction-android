@@ -1,10 +1,10 @@
-Contradiction - Cinematic Android edition v0.12
+Contradiction - Cinematic Android edition v0.13
 
 Requires Android 8.0 or later. Update the existing installation to retain
 the imported video, resume progress and both manual save slots.
 
 INSTALL
-Install Contradiction-Android-v0.12.apk. On the first installation, copy the
+Install Contradiction-Android-v0.13.apk. On the first installation, copy the
 original Windows/gfx/MCMV.mp4 to Downloads and choose Import game video.
 Wait for Import complete, then the Downloads copy can be deleted. Import
 needs approximately 2.4 GB of additional free space while copying.

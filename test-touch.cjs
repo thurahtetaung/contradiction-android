@@ -1015,6 +1015,22 @@ async function runLocationMemoryTests(browser, url, errors) {
     ),
   );
   assert.match(await page.locator('#ui-toast').textContent(), /Game loaded/);
+  const restoredRoutes = await page.evaluate(() =>
+    [...document.querySelectorAll('#scene-routes button')].map((button) => {
+      const index = Number(button.dataset.route);
+      const span = document.createElement('div');
+      span.innerHTML = locList[options + 14 + 6 * index];
+      return {
+        actual: button.getAttribute('aria-label'),
+        expected: span.textContent.trim(),
+      };
+    }),
+  );
+  assert.ok(restoredRoutes.length > 0);
+  for (const route of restoredRoutes) {
+    assert.equal(route.actual, route.expected);
+    assert.notEqual(route.actual, 'Continue');
+  }
   await page.waitForTimeout(4700);
   assert.equal(
     await page.locator('#ui-toast').isVisible(),
