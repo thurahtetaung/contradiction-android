@@ -14,7 +14,9 @@
     toastTimer,
     ownTranscript = '',
     completedShown = false,
-    prologue = null;
+    prologue = null,
+    pendingLoadNotice = '',
+    restoringPicture = false;
   const signatures = new Map();
   const text = (value) => {
     const node = document.createElement('div');
@@ -119,6 +121,7 @@
   }
   window.mobileNotify = notify;
   const usable = () =>
+    !restoringPicture &&
     started === 0 &&
     abled === 1 &&
     recalled === 0 &&
@@ -1488,6 +1491,17 @@
     update('panel-body', pane + '|' + key, build);
   }
   function render() {
+    if (
+      pendingLoadNotice &&
+      usable() &&
+      locon === 0 &&
+      !vplayer.seeking &&
+      vplayer.readyState >= 2 &&
+      Number(getComputedStyle($('mainview')).opacity) >= 0.98
+    ) {
+      notify(pendingLoadNotice);
+      pendingLoadNotice = '';
+    }
     renderChiefCaption();
     root.classList.toggle('playing-prologue', !!prologue);
     if (prologue) {
@@ -1884,7 +1898,12 @@
         } catch {}
       }
     }
-    return oldLoad.apply(this, arguments);
+    const isReset = resetting === 1;
+    pendingLoadNotice = '';
+    restoringPicture = false;
+    const result = oldLoad.apply(this, arguments);
+    if (!isReset) pendingLoadNotice = newin;
+    return result;
   };
   const oldMove = moveloc;
   moveloc = function (index) {
@@ -1909,11 +1928,27 @@
     const loop = locList[at + 3 + locList[at + 2]];
     const borrowed = sceneList.slice(0, 11);
     const visit = ['MOBILE RESUME', 0, loop, target, '', '', 1, '', 0, 0, ''];
+    restoringPicture = true;
     // This clip is already the saved location's idle loop, rather than a
     // walking/story scene. Unlock after the restored frame arrives, not at
     // the end of that entire loop (which can take several seconds).
+    let restoredFrameShown = false,
+      restoreFinished = false;
+    const watchRestoredFrame = () => {
+      if (restoreFinished || cscene !== 'MOBILE RESUME') return;
+      if (vplayer.requestVideoFrameCallback)
+        vplayer.requestVideoFrameCallback((_, metadata) => {
+          restoredFrameShown =
+            metadata.mediaTime >= lochold[0] - 0.1 &&
+            metadata.mediaTime <= lochold[1];
+          if (!restoredFrameShown) watchRestoredFrame();
+        });
+      else restoredFrameShown = !vplayer.seeking && vplayer.readyState >= 2;
+    };
     const unlockRestoredLocation = () => {
+      if (restoreFinished) return;
       if (cscene !== 'MOBILE RESUME') {
+        restoreFinished = true;
         vplayer.removeEventListener('seeked', unlockRestoredLocation);
         return;
       }
@@ -1921,14 +1956,24 @@
         vplayer.seeking ||
         vplayer.readyState < 2 ||
         vplayer.currentTime < lochold[0] - 0.1 ||
-        vplayer.currentTime > lochold[1]
-      )
+        vplayer.currentTime > lochold[1] ||
+        !restoredFrameShown ||
+        Number(getComputedStyle($('mainview')).opacity) < 0.98
+      ) {
+        later(unlockRestoredLocation, 50);
         return;
+      }
+      restoreFinished = true;
+      restoringPicture = false;
       vplayer.removeEventListener('seeked', unlockRestoredLocation);
       prego = locon = 0;
       abled = 1;
       words('place', newname);
       if (!invon) topon('paths');
+      if (pendingLoadNotice) {
+        notify(pendingLoadNotice);
+        pendingLoadNotice = '';
+      }
       invalidate();
     };
     vplayer.addEventListener('seeked', unlockRestoredLocation);
@@ -1936,7 +1981,9 @@
     for (let i = 0; i < 11; i++) sceneList[i] = visit[i];
     arrowops[0] = 'MOBILE RESUME';
     try {
-      return oldMove.call(this, 0);
+      const result = oldMove.call(this, 0);
+      watchRestoredFrame();
+      return result;
     } finally {
       for (let i = 0; i < 11; i++) sceneList[i] = borrowed[i];
       placeSettled = true;

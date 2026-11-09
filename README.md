@@ -55,3 +55,5 @@ The original video is already compressed. A stream-copy MP4 remux preserved the 
 Version 0.10 preserves HTML text boundaries, adds a brief statement-pair reveal for solved contradictions, and captions the original phone audio while retaining casebook transcripts. Leaving a replay stops its audio. See reports/call-caption-validation.md for timing and regression details.
 
 Version 0.11 uses Save for every manual slot. Restoring a matching saved location enables controls after its idle frame is decoded, rather than waiting for the idle clip to finish. Story scenes and older saves without location metadata keep their existing playback timing.
+
+Version 0.12 waits for a presented video frame and the location fade-in before unlocking the restored HUD. The load notice appears at that same point; the original fixed 4.5-second notice is removed during asset preparation.

@@ -1005,6 +1005,22 @@ async function runLocationMemoryTests(browser, url, errors) {
       'ms',
   );
   console.log('PASS: Saved location HUD unlocks in ' + restoreMs + 'ms');
+  assert.ok(
+    await page.evaluate(
+      () =>
+        Number(getComputedStyle(document.getElementById('mainview')).opacity) >=
+          0.98 &&
+        !vplayer.seeking &&
+        vplayer.readyState >= 2,
+    ),
+  );
+  assert.match(await page.locator('#ui-toast').textContent(), /Game loaded/);
+  await page.waitForTimeout(4700);
+  assert.equal(
+    await page.locator('#ui-toast').isVisible(),
+    false,
+    'No legacy delayed load toast',
+  );
   assert.equal(await page.evaluate(() => localStorage.game), autosave);
   // Loading a case file also returns to where it was saved.
   await page

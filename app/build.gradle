@@ -6,8 +6,8 @@ android {
         applicationId 'local.contradiction.android'
         minSdk 26
         targetSdk 35
-        versionCode 11
-        versionName '0.11-cinematic'
+        versionCode 12
+        versionName '0.12-cinematic'
     }
     buildFeatures { buildConfig = true }
     buildTypes {

@@ -14,7 +14,15 @@ for (const name of ['gfx', 'sound'])
     recursive: true,
     filter: (file) => !file.endsWith('.mp4') && !file.endsWith('.DS_Store'),
   });
-fs.copyFileSync(path.join(source, 'game.js'), path.join(dest, 'game.js'));
+const gameSource = fs.readFileSync(path.join(source, 'game.js'), 'utf8');
+// The mobile presentation reports load completion with the visible scene.
+const loadToast = /setTimeout\(function\(\)\{news\(newin\)\},\s*4500\)/g;
+if ([...gameSource.matchAll(loadToast)].length !== 1)
+  throw new Error('Original load notification callback changed');
+fs.writeFileSync(
+  path.join(dest, 'game.js'),
+  gameSource.replace(loadToast, 'void 0'),
+);
 // The original subtitles skip the narrated prologue; merge in our transcription.
 {
   const original = fs.readFileSync(path.join(source, 'sub.vtt'), 'utf8');
