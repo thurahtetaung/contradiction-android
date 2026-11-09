@@ -542,7 +542,7 @@
         ? 'Begin a new investigation?'
         : auto
           ? 'Load the autosave?'
-          : `${kind === 'Save' && saved ? 'Replace' : kind} investigation ${slot}?`,
+          : `${kind} investigation ${slot}?`,
       kind === 'Reset'
         ? 'Your current progress will restart. Manual save slots will be kept.'
         : kind === 'Save'
@@ -1073,11 +1073,7 @@
       if (exists && info?.updated)
         card.appendChild(el('p', 'save-time', savedAgo(info.updated)));
       const actions = el('div', 'card-actions'),
-        save = button(
-          exists ? 'Replace' : 'Save here',
-          () => confirm('Save', slot),
-          'save',
-        ),
+        save = button('Save', () => confirm('Save', slot), 'save'),
         load = button('Load', () => confirm('Load', slot), 'play', 'primary');
       save.dataset.save = slot;
       load.dataset.load = slot;
@@ -1913,6 +1909,30 @@
     const loop = locList[at + 3 + locList[at + 2]];
     const borrowed = sceneList.slice(0, 11);
     const visit = ['MOBILE RESUME', 0, loop, target, '', '', 1, '', 0, 0, ''];
+    // This clip is already the saved location's idle loop, rather than a
+    // walking/story scene. Unlock after the restored frame arrives, not at
+    // the end of that entire loop (which can take several seconds).
+    const unlockRestoredLocation = () => {
+      if (cscene !== 'MOBILE RESUME') {
+        vplayer.removeEventListener('seeked', unlockRestoredLocation);
+        return;
+      }
+      if (
+        vplayer.seeking ||
+        vplayer.readyState < 2 ||
+        vplayer.currentTime < lochold[0] - 0.1 ||
+        vplayer.currentTime > lochold[1]
+      )
+        return;
+      vplayer.removeEventListener('seeked', unlockRestoredLocation);
+      prego = locon = 0;
+      abled = 1;
+      words('place', newname);
+      if (!invon) topon('paths');
+      invalidate();
+    };
+    vplayer.addEventListener('seeked', unlockRestoredLocation);
+    later(unlockRestoredLocation, 250);
     for (let i = 0; i < 11; i++) sceneList[i] = visit[i];
     arrowops[0] = 'MOBILE RESUME';
     try {

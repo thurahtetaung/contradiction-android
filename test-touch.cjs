@@ -993,9 +993,18 @@ async function runLocationMemoryTests(browser, url, errors) {
     .catch(() => {});
   // Relaunch: "Continue investigation" returns to the same spot.
   await ready();
+  const restoreStarted = Date.now();
   await page.locator('#begin-investigation').tap();
   await settled();
   assert.deepEqual(await where(), away);
+  const restoreMs = Date.now() - restoreStarted;
+  assert.ok(
+    restoreMs < 2500,
+    'Saved idle location should unlock without waiting for its loop: ' +
+      restoreMs +
+      'ms',
+  );
+  console.log('PASS: Saved location HUD unlocks in ' + restoreMs + 'ms');
   assert.equal(await page.evaluate(() => localStorage.game), autosave);
   // Loading a case file also returns to where it was saved.
   await page
